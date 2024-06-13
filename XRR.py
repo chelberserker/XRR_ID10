@@ -3,16 +3,105 @@ import time
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import pylab as py
 import numpy as np
 import os
-import tkinter.filedialog as fd
-from math import sin, cos, atan, pi
+from math import sin, cos, pi
 import scipy as sc
 import copy
 
 
-class XRR():
+def rebin(q_vectors, Refl, Relf_E, new_q=None, rebin_as="linear",
+          number_of_bins=5000):
+    """
+    This rebinning procedure is taken from islatu by Andrew R. McCluskey
+
+    https://github.com/DiamondLightSource/islatu
+
+    Rebin the data on a linear or logarithmic q-scale.
+
+    Args:
+        q_vectors:
+            q - the current q vectors.
+        reflected_intensity (:py:attr:`tuple`):
+            (I, I_e) - The current reflected intensities, and their errors.
+        new_q (:py:attr:`array_like`):
+            Array of potential q-values. Defaults to :py:attr:`None`. If this
+            argument is not specified, then the new q, R values are binned
+            according to rebin_as and number_of_q_vectors.
+        rebin_as (py:attr:`str`):
+            String specifying how the data should be rebinned. Options are
+            "linear" and "log". This is only used if the new_q are unspecified.
+        number_of_bins (:py:attr:`int`, optional):
+            The max number of q-vectors to be using initially in the rebinning
+            of the data. Defaults to :py:attr:`400`.
+
+    Returns:
+        :py:attr:`tuple`: Containing:
+            - q: rebinned q-values.
+            - intensity: rebinned intensities.
+            - intensity_e: rebinned intensity errors.
+    """
+
+    # Unpack the arguments.
+    q = q_vectors
+    R, R_e = Refl, Relf_E
+
+    # Required so that logspace/linspace encapsulates the whole data.
+    epsilon = 0.001
+
+    if new_q is None:
+        # Our new q vectors have not been specified, so we should generate some.
+        if rebin_as == "log":
+            new_q = np.logspace(
+                np.log10(q[0]),
+                np.log10(q[-1] + epsilon), number_of_bins)
+        elif rebin_as == "linear":
+            new_q = np.linspace(q.min(), q.max() + epsilon,
+                                number_of_bins)
+
+    binned_q = np.zeros_like(new_q)
+    binned_R = np.zeros_like(new_q)
+    binned_R_e = np.zeros_like(new_q)
+
+    for i in range(len(new_q) - 1):
+        indices = []
+        inverse_var = []
+        for j in range(len(q)):
+            if new_q[i] <= q[j] < new_q[i + 1]:
+                indices.append(j)
+                inverse_var.append(1 / float(R_e[j] ** 2))
+
+        # Don't bother doing maths if there were no recorded q-values between
+        # the two bin points we were looking at.
+        if len(indices) == 0:
+            continue
+
+        # We will be using inverse-variance weighting to minimize the variance
+        # of the weighted mean.
+        sum_of_inverse_var = np.sum(inverse_var)
+
+        # If we measured multiple qs between these bin locations, then average
+        # the data, weighting by inverse variance.
+        for j in indices:
+            binned_R[i] += R[j] / (R_e[j] ** 2)
+            binned_q[i] += q[j] / (R_e[j] ** 2)
+
+        # Divide by the sum of the weights.
+        binned_R[i] /= sum_of_inverse_var
+        binned_q[i] /= sum_of_inverse_var
+
+        # The stddev of an inverse variance weighted mean is always:
+        binned_R_e[i] = np.sqrt(1 / sum_of_inverse_var)
+
+    # Get rid of any empty, unused elements of the array.
+    cleaned_q = np.delete(binned_q, np.argwhere(binned_R == 0))
+    cleaned_R = np.delete(binned_R, np.argwhere(binned_R == 0))
+    cleaned_R_e = np.delete(binned_R_e, np.argwhere(binned_R == 0))
+
+    return cleaned_q, cleaned_R, cleaned_R_e
+
+
+class XRR:
     def __init__(self, file, scans, alpha_i_name='chi',
                  detector_name='mpx_cdte_22_eh1', monitor_name='mon',
                  transmission_name='transm', att_name='curratt', cnttime_name='sec',
@@ -27,9 +116,12 @@ class XRR():
         self.att_name = att_name
         self.energy_name = energy_name
         self.cnttime_name = cnttime_name
-        self.footprint_correction_applied = False
 
+        self.footprint_correction_applied = False
+        self.corrected_doubles = False
         self.replaced_transmission = False
+        self.is_rebinned = False
+
 
         self.PX0 = PX0
         self.PY0 = PY0
@@ -140,7 +232,7 @@ class XRR():
                 np.sum(self.data[i, (self.PY0 - self.dPY):(self.PY0 + self.dPY),
                        (self.PX0 - 2 * self.dPX - 1 - self.dPX):(self.PX0 - 2 * self.dPX - 1 + self.dPX)])) #offset into lower angles square in the plotted detector image
 
-            if (i < len(self.alpha_i)):
+            if i < len(self.alpha_i):
                 Qzcut[:] = np.sum(self.data[i, (self.PY0 - self.dPY):(self.PY0 + self.dPY), :], axis=0)
                 Qzcut_bckg1[:] = np.sum(
                     self.data[i, (self.PY0 + 2 * self.dPY + 1 - self.dPY):(self.PY0 + 2 * self.dPY + 1 + self.dPY), :],
@@ -177,12 +269,12 @@ class XRR():
         self.reflectivity = self.reflectivity / self.I0
         self.reflectivity_error = self.reflectivity_error / self.I0
 
-        print("Processing completed. Processing time %3.3f sec" % (time.time() - t0))
+        print("Processing completed. Processing time %3.3f sec \n\n" % (time.time() - t0))
 
     def footprint_correction(self, sample_size=1, beamsize=9.6, correct_dir_beam=False):  # sample size in cm, beam size in microns
         if not self.footprint_correction_applied:
             Si_critical_angle = 4 * np.pi * np.sin(np.deg2rad(8.103E-02)) / (12.398 / self.energy)
-            samplesize = sample_size * 10000  # conerting cm to microns
+            samplesize = sample_size * 10000  # converting cm to microns
             footprint = np.array([0.5 * beamsize / np.sin(np.deg2rad(alpha_i)) if (
                         alpha_i != 0) else 0.5 * beamsize / np.sin(np.deg2rad(1e-3)) for alpha_i in self.alpha_i])
 
@@ -198,19 +290,21 @@ class XRR():
                     i += 1
             self.reflectivity = Icor
             self.footprint_correction_applied = True
-            print('Footprint correction completed with beam size = {} microns and sample size = {} cm'.format(beamsize,
+            print('Footprint correction completed with beam size = {} microns and sample size = {} cm\n'.format(beamsize,
                                                                                                               sample_size))
         else:
-            print('Footprint correction already applied! To apply in again use reprocess() method.')
+            print('Footprint correction already applied! To apply in again use reprocess() method. \n')
 
     def reprocess(self):
         self.__load_data__()
         self.__process_2D_data__()
         self.footprint_correction_applied = False
+        self.corrected_doubles = False
         self.replaced_transmission = False
-        print('Reloaded and reprocessed data.')
+        self.is_rebinned = False
+        print("Reloaded and reprocessed data. \n\n")
 
-    def produce_Qmap(self, SDD=910):
+    def produce_Qmap(self, SDD=900):
         t0 = time.time()
         print('Starting q-space mapping.')
         chi_r = np.deg2rad(self.alpha_i)
@@ -227,8 +321,8 @@ class XRR():
         print("2D map calculated. Processing time %3.3f sec" % (time.time() - t0))
 
     def plot_Qmap(self, save=False):
-        fig, (ax0) = plt.subplots(nrows=1, ncols=1, figsize=(8, 8), layout='tight')
-        im = ax0.pcolormesh(self.Qx_map, self.Qz_map, np.log10(self.Smap2D), cmap='jet', vmin=4, vmax=10,
+        fig, (ax0) = plt.subplots(nrows=1, ncols=1, figsize=(6, 6), layout='tight')
+        ax0.pcolormesh(self.Qx_map, self.Qz_map, np.log10(self.Smap2D), cmap='jet', vmin=4, vmax=10,
                             # np.log10(Zmin + 1E1)
                             shading='gouraud', snap=True)
 
@@ -236,13 +330,31 @@ class XRR():
         ax0.set_ylabel(r'$q_z, \AA^{-1}$')  # , size=18)
         ax0.set_ylim(0, 0.5)
         ax0.set_xlim(-2e-4, 0.0005)
-        # ax0.hlines(0.205,-1,1)
-        # ax0.hlines(0.22,-1,1)
         ax0.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
         fig.tight_layout()
+        if save:
+            print('Saving Q-space map.')
+            plt.savefig('Qmap_{}_scan_{}.png'.format(self.sample_name, self.scans), dpi=300)
+
+        return fig, ax0
+
 
     def get_reflectivity(self):  # return np array of reflectivity and errors
         return np.array([self.qz, self.reflectivity, self.reflectivity_error])
+
+    def plot_reflectivity(self, save=False):
+        fig, (ax0) = plt.subplots(nrows=1, ncols=1, figsize=(6, 6), layout='tight')
+        ax0.errorbar(*self.get_reflectivity())
+        ax0.semilogy()
+        ax0.set_xlim(left=0)
+        ax0.set_ylim(top=2)
+        ax0.set_xlabel(r'$q_z, \AA^{-1}$')
+        ax0.set_ylabel(r'$\mathrm{Reflectivity}$')
+        if save:
+            print('Saving reflectivity plot.')
+            plt.savefig('XRR_{}_scan_{}.png'.format(self.sample_name, self.scans), dpi=300)
+
+        return fig, ax0
 
     def save_reflectivity(self, *filename):
         if not filename:
@@ -296,8 +408,9 @@ class XRR():
         return indexes_multiple_values
 
     def calculate_corrected_transmission(self):
+        _new_transmission_dict = dict(zip(self.attenuator, self.transmission))
         if self.replaced_transmission == True:
-            pass
+            print('Transmission was changed. Consider reprocessing data.')
         else:
             double_x = XRR._find_double_(self.qz)
             sorted_double_x = dict(sorted(double_x.items(), reverse=True))
@@ -311,11 +424,17 @@ class XRR():
             for i in coeff_dict:
                 _new_transm[0:coeff_dict[i]['indexes'][1]] = _new_transm[0:coeff_dict[i]['indexes'][1]] * coeff_dict[i][
                     'coeff']
-            _new_trasmission_dict = dict(zip(self.attenuator, _new_transm))
-            # _new_trasmission_dict.update({0:1})
-        return _new_trasmission_dict
+            _new_transmission_dict = dict(zip(self.attenuator, _new_transm))
+            # _new_transmission_dict.update({0:1})
+        return _new_transmission_dict
 
     def correct_doubles(self):
-        new_transm = self.calculate_corrected_transmission()
-        self.replace_transmission(new_transm)
-        print('Correcting transmission using double points.')
+        if not self.corrected_doubles:
+            print('Correcting transmission using double points.')
+            new_transm = self.calculate_corrected_transmission()
+            self.replace_transmission(new_transm)
+            self.corrected_doubles = True
+        else:
+            print('Double points already corrected.')
+
+
