@@ -1,4 +1,4 @@
-import h5py  # HDF5 support
+import h5py
 import time
 
 import matplotlib.pyplot as plt
@@ -194,6 +194,9 @@ class XRR:
                 cnttime = f.get(ScanN + '.1' + '/measurement/' + self.cnttime_name)[skip_points:]
                 self.cnttime = np.append(self.cnttime, cnttime)
 
+                energy = f.get(ScanN + '.1' + '/instrument/positioners/' + self.energy_name)
+                self.energy = np.append(self.energy, energy)
+
                 print('Loaded scan #{}'.format(ScanN))
 
         print("Loading completed. Reading time %3.3f sec" % (time.time() - t0))
@@ -202,7 +205,12 @@ class XRR:
         t0 = time.time()
         print('Starting 2D data processing.')
         nic, nxc, nyc = np.shape(self.data)
-
+        try:
+            if len(self.energy)>1:              # to deal with legacy data
+                _energy = self.energy.mean()
+                self.energy = _energy
+        except:
+            pass
         # print('Combined array of 2D images shape %6d, %6d, %6d \n' % (nic, nxc, nyc))
 
         # map2D = np.zeros((len(x), nxc))  # ,dtype=float32)
@@ -210,6 +218,7 @@ class XRR:
         Qzcut_bckg1 = np.ones(nxc)
         Qzcut_bckg2 = np.ones(nxc)
         self.Smap2D = []
+        self.Smap2D_e = []
 
         Is_cut = np.zeros(nic)  # array for signal
         Ib_cut = np.zeros(nic)  # array for background
@@ -241,8 +250,10 @@ class XRR:
                     self.data[i, (self.PY0 - 2 * self.dPY - 1 + self.dPY):(self.PY0 - 2 * self.dPY - 1 - self.dPY), :],
                     axis=0)
                 self.Smap2D.append(
-                    (Qzcut[:] - (Qzcut_bckg1[:] + Qzcut_bckg2) / 2) / self.transmission[i] / self.cnttime[i] /
+                    (Qzcut[:] - (Qzcut_bckg1[:] + Qzcut_bckg2) / 2) / self.transmission[i]  /
                     self.monitor[i] * self.monitor[0])
+                self.Smap2D_e.append(((np.sqrt(abs(Qzcut[:]))+ np.sqrt((Qzcut_bckg1[:]+Qzcut_bckg2[:])/2))/ self.transmission[i]  /
+                    self.monitor[i] * self.monitor[0]))
                 # Smap2D.append((Qzcut[:]) / m4[i] / m2[i] / m1[i] * m1[0])
 
             Ib_cut[i] = (IqxyBL + IqxyBH) / 2  # subtract true backgorund
@@ -250,8 +261,11 @@ class XRR:
             Is_cut[i] = IqxyS
             Is_cut_err[i] = np.sqrt(Is_cut[i])
             Ib_cut_err[i] = np.sqrt(Ib_cut[i])
-            I_err[i] = Is_cut_err[i]
-            # I_err[i] = np.sqrt((Is_cut_err[i]/Is_cut[i])**2 + (Ib_cut_err[i]/Ib_cut[i])**2)
+            #I_err[i] = Is_cut_err[i]
+            try:
+                I_err[i] = np.sqrt((Is_cut_err[i]/Is_cut[i])**2 + (Ib_cut_err[i]/Ib_cut[i])**2)
+            except:
+                I_err[i] = Is_cut_err[i]
 
         print('Number of points in the scan %6d \n' % (len(self.alpha_i)))
         I_Signal_cut = Is_cut[:len(self.alpha_i)]
@@ -259,13 +273,13 @@ class XRR:
         I_error = I_err[:len(self.alpha_i)]
 
         self.qz = 4 * pi * np.sin(np.deg2rad(self.alpha_i)) / (12.4 / self.energy)
-        self.reflectivity = (I_Signal_cut - I_Backgr_cut) / self.transmission / self.cnttime / self.monitor * \
+        self.reflectivity = (I_Signal_cut - I_Backgr_cut) / self.transmission  / self.monitor * \
                             self.monitor[0]
-        self.reflectivity_error = I_error / self.transmission / self.cnttime / self.monitor * self.monitor[0]
+        self.reflectivity_error = I_error / self.transmission  / self.monitor * self.monitor[0]
 
-        self.bckg = I_Backgr_cut / self.transmission / self.cnttime / self.monitor * self.monitor[0] / self.I0
+        self.bckg = I_Backgr_cut / self.transmission / self.monitor * self.monitor[0] / self.I0
 
-        self.raw_counts = I_Signal_cut / self.cnttime / self.monitor * self.monitor[0]
+        self.raw_counts = I_Signal_cut /  self.monitor * self.monitor[0]
         self.reflectivity = self.reflectivity / self.I0
         self.reflectivity_error = self.reflectivity_error / self.I0
 
@@ -313,10 +327,10 @@ class XRR:
         k0 = 2 * pi / (12.398 / self.energy)
 
         self.Qz_map = np.array(
-            [[round(k0 * (sin(chi + ((self.PX0 - px) * self.pixel_size_qxz / SDD)) + sin(chi)), 10) for px in pixels]
+            [[np.round(k0 * (sin(chi + ((self.PX0 - px) * self.pixel_size_qxz / SDD)) + sin(chi)), 10) for px in pixels]
              for chi in chi_r])
         self.Qx_map = np.array(
-            [[round(k0 * (cos(chi + ((self.PX0 - px) * self.pixel_size_qxz / SDD)) - cos(chi)), 10) for px in pixels]
+            [[np.round(k0 * (cos(chi + ((self.PX0 - px) * self.pixel_size_qxz / SDD)) - cos(chi)), 10) for px in pixels]
              for chi in chi_r])
         print("2D map calculated. Processing time %3.3f sec" % (time.time() - t0))
 
@@ -338,9 +352,11 @@ class XRR:
 
         return fig, ax0
 
-
     def get_reflectivity(self):  # return np array of reflectivity and errors
-        return np.array([self.qz, self.reflectivity, self.reflectivity_error])
+        qz_tr =  np.sort(self.qz)
+        R_tr = self.reflectivity[self.qz.argsort()]
+        Rerr_tr = self.reflectivity_error[self.qz.argsort()]
+        return np.array([qz_tr, R_tr, Rerr_tr])
 
     def plot_reflectivity(self, save=False):
         fig, (ax0) = plt.subplots(nrows=1, ncols=1, figsize=(6, 6), layout='tight')
@@ -363,8 +379,10 @@ class XRR:
         np.savetxt(filename, _to_save)
         print('Reflectivity saved to dir: {} \n filename: {}'.format(os.getcwd(), filename))
 
-    def show_detector_image(self, frame_number=50):
-        fig, ax = plt.subplots()
+    def show_detector_image(self, frame_number=50, ax=None, plot_cross = True):
+        fig = plt.figure()
+        if ax is None:
+            ax = plt.gca()
         ax.imshow(np.log10(self.data[frame_number] + 1e-3))
         ax.set_ylim(self.PY0 - 10 * self.dPY, self.PY0 + 10 * self.dPY)
         ax.set_xlim(self.PX0 - 10 * self.dPY, self.PX0 + 10 * self.dPY)
@@ -377,12 +395,13 @@ class XRR:
         ax.add_patch(signal)
         ax.add_patch(b1)
         ax.add_patch(b2)
-        plt.hlines(self.PY0, self.PX0 - 30, self.PX0 + 30)
-        plt.vlines(self.PX0, self.PY0 - 30, self.PY0 + 30)
+        if plot_cross:
+            ax.hlines(self.PY0, self.PX0 - 30, self.PX0 + 30)
+            ax.vlines(self.PX0, self.PY0 - 30, self.PY0 + 30)
         ax.set_xlabel('Detector pixel, X')
         ax.set_ylabel('Detector pixel, Y')
         ax.set_title('Detector {}, frame #{}'.format(self.detector_name, frame_number))
-        plt.legend()
+        ax.legend()
 
     def replace_transmission(self, filter_transmission):
         _new_transmission = np.array([])
