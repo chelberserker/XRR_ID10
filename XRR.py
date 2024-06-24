@@ -334,8 +334,11 @@ class XRR:
              for chi in chi_r])
         print("2D map calculated. Processing time %3.3f sec" % (time.time() - t0))
 
-    def plot_Qmap(self, save=False):
-        fig, (ax0) = plt.subplots(nrows=1, ncols=1, figsize=(6, 6), layout='tight')
+    def plot_Qmap(self, save=False, fig=None, axes=None):
+        if axes is None:
+            fig, (ax0) = plt.subplots(nrows=1, ncols=1, figsize=(6, 6), layout='tight')
+        else:
+            ax0 = axes
         ax0.pcolormesh(self.Qx_map, self.Qz_map, np.log10(self.Smap2D), cmap='jet', vmin=4, vmax=10,
                             # np.log10(Zmin + 1E1)
                             shading='gouraud', snap=True)
@@ -345,7 +348,6 @@ class XRR:
         ax0.set_ylim(0, 0.5)
         ax0.set_xlim(-2e-4, 0.0005)
         ax0.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
-        fig.tight_layout()
         if save:
             print('Saving Q-space map.')
             plt.savefig('Qmap_{}_scan_{}.png'.format(self.sample_name, self.scans), dpi=300)
