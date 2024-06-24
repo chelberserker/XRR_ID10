@@ -137,6 +137,7 @@ class XRR:
         self.__process_2D_data__()
 
     def __load_single_scan__(self, ScanN):
+        print('Loading scan #{}'.format(ScanN))
         f = h5py.File(self.file, "r")
         self.data = f.get(ScanN + '.1/measurement/' + self.detector_name)
 
@@ -275,7 +276,7 @@ class XRR:
         self.qz = 4 * pi * np.sin(np.deg2rad(self.alpha_i)) / (12.4 / self.energy)
         self.reflectivity = (I_Signal_cut - I_Backgr_cut) / self.transmission  / self.monitor * \
                             self.monitor[0]
-        self.reflectivity_error = I_error / self.transmission  / self.monitor * self.monitor[0]
+        self.reflectivity_error = abs(I_error * self.reflectivity)
 
         self.bckg = I_Backgr_cut / self.transmission / self.monitor * self.monitor[0] / self.I0
 
@@ -459,3 +460,35 @@ class XRR:
             print('Double points already corrected.')
 
 
+    @staticmethod
+    def find_i0_from_z_scan(z, I):
+        n_max = np.argmax(I)
+        I_cutoff = np.mean(I[:n_max]) - np.mean(I[:n_max]) ** 0.5
+        zscan_new = I[np.where(I >= I_cutoff)]
+        I0 = np.median(zscan_new)
+        return I0, n_max
+
+    def find_i0(self, to_print=True):
+        if to_print:
+            print('Processing scan of motor {}.'.format(self.alpha_i_name))
+        else:
+            pass
+        I0, n_max = XRR.find_i0_from_z_scan(self.alpha_i, self.reflectivity)
+        if to_print:
+            print('I0 = {:.5e}, attenuator = {}, transmission = {:.5e}'.format(I0, self.attenuator[n_max], self.transmission[n_max]))
+        else:
+            pass
+        return I0, self.attenuator[n_max], self.transmission[n_max]
+
+    def assert_i0(self, calc_I0, atten, transmission):
+        if self.alpha_i_name.lower()=='zgh':
+            print('You are trying to replace I0 in zgH scan. Load reflectivity data.')
+        else:
+            if atten in self.attenuator:
+                if self.corrected_doubles:
+                    I0 = calc_I0*transmission/self.transmission[np.where(self.attenuator==atten)]
+                    print(I0)
+                    self.I0 = I0[0]
+                print('I0 replaced.')
+            else:
+                print('Attenuator {} not found in the scan of motor {}.\nCheck inputs.'.format(atten, self.alpha_i))
