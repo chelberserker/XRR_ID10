@@ -133,6 +133,10 @@ class XRR:
         self.pixel_size_qy = pixel_size_qy
         self.pixel_size_qxz = pixel_size_qxz
 
+        self.qz = None
+        self.reflectivity = None
+        self.reflectivity_error = None
+
         self.__load_data__()
         self.__process_2D_data__()
 
@@ -266,14 +270,14 @@ class XRR:
             try:
                 I_err[i] = np.sqrt((Is_cut_err[i]/Is_cut[i])**2 + (Ib_cut_err[i]/Ib_cut[i])**2)
             except:
-                I_err[i] = Is_cut_err[i]
+                I_err[i] = Is_cut_err[i]/Is_cut[i]
 
         print('Number of points in the scan %6d \n' % (len(self.alpha_i)))
-        I_Signal_cut = Is_cut[:len(self.alpha_i)]
-        I_Backgr_cut = Ib_cut[:len(self.alpha_i)]
-        I_error = I_err[:len(self.alpha_i)]
+        I_Signal_cut = np.nan_to_num(Is_cut[:len(self.alpha_i)], nan=1e-11)
+        I_Backgr_cut = np.nan_to_num(Ib_cut[:len(self.alpha_i)], nan=1e-11)
+        I_error = np.nan_to_num(I_err[:len(self.alpha_i)], nan = 1e-11)
 
-        self.qz = 4 * pi * np.sin(np.deg2rad(self.alpha_i)) / (12.4 / self.energy)
+        self.qz = 4 * pi * np.sin(np.deg2rad(self.alpha_i)) / (12.398 / self.energy)
         self.reflectivity = (I_Signal_cut - I_Backgr_cut) / self.transmission  / self.monitor * \
                             self.monitor[0]
         self.reflectivity_error = abs(I_error * self.reflectivity)
@@ -283,6 +287,12 @@ class XRR:
         self.raw_counts = I_Signal_cut /  self.monitor * self.monitor[0]
         self.reflectivity = self.reflectivity / self.I0
         self.reflectivity_error = self.reflectivity_error / self.I0
+
+        for each in np.where(self.reflectivity<=1e-12):
+            self.reflectivity[each] = 1e-12
+
+        for each in np.where(self.reflectivity_error<=1e-13):
+            self.reflectivity_error[each] = 1e-13
 
         print("Processing completed. Processing time %3.3f sec \n\n" % (time.time() - t0))
 
@@ -375,12 +385,14 @@ class XRR:
 
         return fig, ax0
 
-    def save_reflectivity(self, *filename):
+    def save_reflectivity(self, filename=False, *directory):
+        if not directory:
+            directory = os.getcwd()
         if not filename:
             filename = self.sample_name + '_xrr_scan_{}.dat'.format(self.scans)
         _to_save = self.get_reflectivity().T
         np.savetxt(filename, _to_save)
-        print('Reflectivity saved to dir: {} \n filename: {}'.format(os.getcwd(), filename))
+        print('Reflectivity saved to dir: {} \n filename: {}'.format(directory, filename))
 
     def show_detector_image(self, frame_number=50, ax=None, plot_cross = True):
         fig = plt.figure()
@@ -458,6 +470,13 @@ class XRR:
             self.corrected_doubles = True
         else:
             print('Double points already corrected.')
+
+    def do_rebin(self, *args, **kwargs):
+        new_qz, new_R, new_R_err = rebin(*self.get_reflectivity())
+        self.qz = new_qz
+        self.reflectivity = new_R
+        self.reflectivity_error = new_R_err
+
 
 
     @staticmethod
