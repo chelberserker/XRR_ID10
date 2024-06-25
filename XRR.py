@@ -385,6 +385,19 @@ class XRR:
 
         return fig, ax0
 
+    def plot_reflectivity_qz4(self, save=False):
+        fig, (ax0) = plt.subplots(nrows=1, ncols=1, figsize=(6, 6), layout='tight')
+        ax0.errorbar(self.qz, self.reflectivity*self.qz**4,self.reflectivity_error*self.qz**4)
+        ax0.semilogy()
+        ax0.set_xlim(left=0)
+        ax0.set_xlabel(r'$q_z, \AA^{-1}$')
+        ax0.set_ylabel(r'$\mathrm{Reflectivity}\cdot q_z^4$')
+        if save:
+            print('Saving reflectivity * qz**4 plot.')
+            plt.savefig('XRR_{}_scan_qz4_{}.png'.format(self.sample_name, self.scans), dpi=300)
+
+        return fig, ax0
+
     def save_reflectivity(self, filename=False, *directory):
         if not directory:
             directory = os.getcwd()
