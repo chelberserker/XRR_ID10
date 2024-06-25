@@ -371,32 +371,37 @@ class XRR:
         Rerr_tr = self.reflectivity_error[self.qz.argsort()]
         return np.array([qz_tr, R_tr, Rerr_tr])
 
-    def plot_reflectivity(self, save=False):
-        fig, (ax0) = plt.subplots(nrows=1, ncols=1, figsize=(6, 6), layout='tight')
-        ax0.errorbar(*self.get_reflectivity())
-        ax0.semilogy()
-        ax0.set_xlim(left=0)
-        ax0.set_ylim(top=2)
-        ax0.set_xlabel(r'$q_z, \AA^{-1}$')
-        ax0.set_ylabel(r'$\mathrm{Reflectivity}$')
+    def plot_reflectivity(self, save=False, ax=None):
+        fig = plt.figure(figsize=(6, 6), layout='tight')
+        if ax is None:
+            ax = plt.gca()
+        ax.errorbar(*self.get_reflectivity(), capsize=1)
+        ax.semilogy()
+        ax.set_xlim(left=0)
+        ax.set_ylim(top=2)
+        ax.set_yticks([1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1])
+        ax.set_xlabel(r'$q_z, \AA^{-1}$')
+        ax.set_ylabel(r'$\mathrm{Reflectivity}$')
         if save:
             print('Saving reflectivity plot.')
             plt.savefig('XRR_{}_scan_{}.png'.format(self.sample_name, self.scans), dpi=300)
 
-        return fig, ax0
+        return fig, ax
 
-    def plot_reflectivity_qz4(self, save=False):
-        fig, (ax0) = plt.subplots(nrows=1, ncols=1, figsize=(6, 6), layout='tight')
-        ax0.errorbar(self.qz, self.reflectivity*self.qz**4,self.reflectivity_error*self.qz**4)
-        ax0.semilogy()
-        ax0.set_xlim(left=0)
-        ax0.set_xlabel(r'$q_z, \AA^{-1}$')
-        ax0.set_ylabel(r'$\mathrm{Reflectivity}\cdot q_z^4$')
+    def plot_reflectivity_qz4(self, save=False, ax=None):
+        fig = plt.figure(figsize=(6, 6), layout='tight')
+        if ax is None:
+            ax = plt.gca()
+        ax.errorbar(self.qz, self.reflectivity*self.qz**4,self.reflectivity_error*self.qz**4, capsize=1)
+        ax.semilogy()
+        ax.set_xlim(left=0)
+        ax.set_xlabel(r'$q_z, \AA^{-1}$')
+        ax.set_ylabel(r'$\mathrm{Reflectivity}\cdot q_z^4$')
         if save:
             print('Saving reflectivity * qz**4 plot.')
             plt.savefig('XRR_{}_scan_qz4_{}.png'.format(self.sample_name, self.scans), dpi=300)
 
-        return fig, ax0
+        return fig, ax
 
     def save_reflectivity(self, filename=False, *directory):
         if not directory:
@@ -408,7 +413,7 @@ class XRR:
         print('Reflectivity saved to dir: {} \n filename: {}'.format(directory, filename))
 
     def show_detector_image(self, frame_number=50, ax=None, plot_cross = True):
-        fig = plt.figure()
+        fig = plt.figure(figsize=(6,6), layout='tight')
         if ax is None:
             ax = plt.gca()
         ax.imshow(np.log10(self.data[frame_number] + 1e-3))
@@ -512,14 +517,28 @@ class XRR:
             pass
         return I0, self.attenuator[n_max], self.transmission[n_max]
 
-    def assert_i0(self, calc_I0, atten, transmission):
+    def _assert_i0_from_calc(self, calc_I0, atten, transmission):
         if self.alpha_i_name.lower()=='zgh':
             print('You are trying to replace I0 in zgH scan. Load reflectivity data.')
         else:
             if atten in self.attenuator:
                 if self.corrected_doubles:
                     I0 = calc_I0*transmission/self.transmission[np.where(self.attenuator==atten)]
-                    print(I0)
+
+                    self.I0 = I0[0]
+                print('I0 replaced.')
+            else:
+                print('Attenuator {} not found in the scan of motor {}.\nCheck inputs.'.format(atten, self.alpha_i))
+
+    def assert_i0(self, zgH_scan):
+        if self.alpha_i_name.lower()=='zgh':
+            print('You are trying to replace I0 in zgH scan. Load reflectivity data.')
+        else:
+            calc_I0, atten, transmission = zgH_scan.find_i0(to_print=False)
+            calc_I0 = calc_I0* zgH_scan.monitor[0] / self.monitor[0]
+            if atten in self.attenuator:
+                if self.corrected_doubles:
+                    I0 = calc_I0*transmission/self.transmission[np.where(self.attenuator==atten)]
                     self.I0 = I0[0]
                 print('I0 replaced.')
             else:
