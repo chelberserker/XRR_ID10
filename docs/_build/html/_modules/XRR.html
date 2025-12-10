@@ -1,0 +1,1001 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XRR &mdash; XRR Processing 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../index.html" class="icon icon-home">
+            XRR Processing
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">XRR Processing</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">XRR Processing</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">XRR</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for XRR</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">X-ray Reflectivity (XRR) processing library.</span>
+
+<span class="sd">This library is used for the processing of Surface X-ray Scattering data</span>
+<span class="sd">obtained on the ID10 beamline at ESRF.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">sin</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">pi</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">patches</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">stats</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="rebin">
+<a class="viewcode-back" href="../XRR.html#XRR.rebin">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">rebin</span><span class="p">(</span><span class="n">q_vectors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+          <span class="n">Refl</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+          <span class="n">Relf_E</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+          <span class="n">new_q</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+          <span class="n">rebin_as</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+          <span class="n">number_of_bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rebin the data on a linear or logarithmic q-scale.</span>
+
+<span class="sd">    This rebinning procedure is taken from islatu by Andrew R. McCluskey:</span>
+<span class="sd">    https://github.com/DiamondLightSource/islatu</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        q_vectors (np.ndarray): The current q vectors.</span>
+<span class="sd">        Refl (np.ndarray): The current reflected intensities.</span>
+<span class="sd">        Relf_E (np.ndarray): The current reflected intensity errors.</span>
+<span class="sd">        new_q (Optional[np.ndarray]): Array of potential q-values. Defaults to None.</span>
+<span class="sd">            If this argument is not specified, then the new q, R values are binned</span>
+<span class="sd">            according to rebin_as and number_of_bins.</span>
+<span class="sd">        rebin_as (str): String specifying how the data should be rebinned.</span>
+<span class="sd">            Options are &quot;linear&quot; and &quot;log&quot;. This is only used if new_q is unspecified.</span>
+<span class="sd">            Defaults to &quot;linear&quot;.</span>
+<span class="sd">        number_of_bins (int, optional): The max number of q-vectors to be using</span>
+<span class="sd">            initially in the rebinning of the data. Defaults to 5000.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple[np.ndarray, np.ndarray, np.ndarray]: Containing:</span>
+<span class="sd">            - cleaned_q: rebinned q-values.</span>
+<span class="sd">            - cleaned_R: rebinned intensities.</span>
+<span class="sd">            - cleaned_R_e: rebinned intensity errors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Unpack the arguments.</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">q_vectors</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">Refl</span>
+    <span class="n">R_e</span> <span class="o">=</span> <span class="n">Relf_E</span>
+
+    <span class="c1"># Required so that logspace/linspace encapsulates the whole data.</span>
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">0.001</span>
+
+    <span class="k">if</span> <span class="n">new_q</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Our new q vectors have not been specified, so we should generate some.</span>
+        <span class="k">if</span> <span class="n">rebin_as</span> <span class="o">==</span> <span class="s2">&quot;log&quot;</span><span class="p">:</span>
+            <span class="n">new_q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">),</span> <span class="n">number_of_bins</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">rebin_as</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">:</span>
+            <span class="n">new_q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">q</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">q</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">,</span>
+                                <span class="n">number_of_bins</span><span class="p">)</span>
+
+    <span class="n">binned_q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">new_q</span><span class="p">)</span>
+    <span class="n">binned_R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">new_q</span><span class="p">)</span>
+    <span class="n">binned_R_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">new_q</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">new_q</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">inverse_var</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">q</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">new_q</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">q</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">new_q</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]:</span>
+                <span class="n">indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+                <span class="n">inverse_var</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">R_e</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="c1"># Don&#39;t bother doing maths if there were no recorded q-values between</span>
+        <span class="c1"># the two bin points we were looking at.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># We will be using inverse-variance weighting to minimize the variance</span>
+        <span class="c1"># of the weighted mean.</span>
+        <span class="n">sum_of_inverse_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">inverse_var</span><span class="p">)</span>
+
+        <span class="c1"># If we measured multiple qs between these bin locations, then average</span>
+        <span class="c1"># the data, weighting by inverse variance.</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+            <span class="n">binned_R</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">R</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">R_e</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">binned_q</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">q</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">R_e</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Divide by the sum of the weights.</span>
+        <span class="n">binned_R</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/=</span> <span class="n">sum_of_inverse_var</span>
+        <span class="n">binned_q</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/=</span> <span class="n">sum_of_inverse_var</span>
+
+        <span class="c1"># The stddev of an inverse variance weighted mean is always:</span>
+        <span class="n">binned_R_e</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">sum_of_inverse_var</span><span class="p">)</span>
+
+    <span class="c1"># Get rid of any empty, unused elements of the array.</span>
+    <span class="n">cleaned_q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">binned_q</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">binned_R</span> <span class="o">==</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="n">cleaned_R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">binned_R</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">binned_R</span> <span class="o">==</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="n">cleaned_R_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">binned_R_e</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">binned_R</span> <span class="o">==</span> <span class="mi">0</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">cleaned_q</span><span class="p">,</span> <span class="n">cleaned_R</span><span class="p">,</span> <span class="n">cleaned_R_e</span></div>
+
+
+
+<div class="viewcode-block" id="XRR">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">XRR</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for the processing of Surface X-ray Scattering data.</span>
+
+<span class="sd">    This class handles loading h5 files, region-of-interest based integration</span>
+<span class="sd">    of 2D detector data, corrections (footprint, transmission), and plotting.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        file (str): Path to the HDF5 file containing the data.</span>
+<span class="sd">        scans (np.ndarray): Array of scan numbers to process.</span>
+<span class="sd">        alpha_i_name (str): Name of the incident angle motor/counter.</span>
+<span class="sd">        detector_name (str): Name of the detector data entry.</span>
+<span class="sd">        monitor_name (str): Name of the monitor counter.</span>
+<span class="sd">        transmission_name (str): Name of the transmission counter.</span>
+<span class="sd">        att_name (str): Name of the attenuator positioner.</span>
+<span class="sd">        energy_name (str): Name of the energy positioner.</span>
+<span class="sd">        cnttime_name (str): Name of the counting time counter.</span>
+<span class="sd">        PX0 (int): Direct beam X pixel coordinate on detector.</span>
+<span class="sd">        PY0 (int): Direct beam Y pixel coordinate on detector.</span>
+<span class="sd">        dPX (int): Half-width of the ROI in X direction.</span>
+<span class="sd">        dPY (int): Half-width of the ROI in Y direction.</span>
+<span class="sd">        pixel_size_qxz (float): Pixel size in reciprocal space (x/z).</span>
+<span class="sd">        pixel_size_qy (float): Pixel size in reciprocal space (y).</span>
+<span class="sd">        I0 (float): Incident intensity normalization factor.</span>
+<span class="sd">        footprint_correction_applied (bool): Flag if footprint correction was applied.</span>
+<span class="sd">        corrected_doubles (bool): Flag if double points were corrected.</span>
+<span class="sd">        replaced_transmission (bool): Flag if transmission was manually replaced.</span>
+<span class="sd">        is_rebinned (bool): Flag if data has been rebinned.</span>
+<span class="sd">        qz (Optional[np.ndarray]): Calculated qz vector.</span>
+<span class="sd">        reflectivity (Optional[np.ndarray]): Calculated reflectivity.</span>
+<span class="sd">        reflectivity_error (Optional[np.ndarray]): Calculated reflectivity error.</span>
+<span class="sd">        Smap2D (List): List of 2D maps.</span>
+<span class="sd">        Smap2D_e (List): List of 2D map errors.</span>
+<span class="sd">        Qx_map (Optional[np.ndarray]): Qx map for 2D plotting.</span>
+<span class="sd">        Qz_map (Optional[np.ndarray]): Qz map for 2D plotting.</span>
+<span class="sd">        sample_name (str): Name of the sample.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">scans</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+                 <span class="n">alpha_i_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;chi&#39;</span><span class="p">,</span>
+                 <span class="n">detector_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;mpx_cdte_22_eh1&#39;</span><span class="p">,</span>
+                 <span class="n">monitor_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;mon&#39;</span><span class="p">,</span>
+                 <span class="n">transmission_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;transm&#39;</span><span class="p">,</span>
+                 <span class="n">att_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;curratt&#39;</span><span class="p">,</span>
+                 <span class="n">cnttime_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;sec&#39;</span><span class="p">,</span>
+                 <span class="n">PX0</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">404</span><span class="p">,</span>
+                 <span class="n">PY0</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">165</span><span class="p">,</span>
+                 <span class="n">dPX</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+                 <span class="n">dPY</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+                 <span class="n">pixel_size_qxz</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.055</span><span class="p">,</span>
+                 <span class="n">pixel_size_qy</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.055</span><span class="p">,</span>
+                 <span class="n">energy_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;eccmono&#39;</span><span class="p">,</span>
+                 <span class="n">I0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e13</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the XRR processing class.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file (str): Path to the HDF5 file.</span>
+<span class="sd">            scans (Union[List[int], np.ndarray]): List of scan numbers.</span>
+<span class="sd">            alpha_i_name (str, optional): Motor name for incident angle. Defaults to &#39;chi&#39;.</span>
+<span class="sd">            detector_name (str, optional): Detector dataset name. Defaults to &#39;mpx_cdte_22_eh1&#39;.</span>
+<span class="sd">            monitor_name (str, optional): Monitor counter name. Defaults to &#39;mon&#39;.</span>
+<span class="sd">            transmission_name (str, optional): Transmission counter name. Defaults to &#39;transm&#39;.</span>
+<span class="sd">            att_name (str, optional): Attenuator name. Defaults to &#39;curratt&#39;.</span>
+<span class="sd">            cnttime_name (str, optional): Count time name. Defaults to &#39;sec&#39;.</span>
+<span class="sd">            PX0 (int, optional): Direct beam X pixel. Defaults to 404.</span>
+<span class="sd">            PY0 (int, optional): Direct beam Y pixel. Defaults to 165.</span>
+<span class="sd">            dPX (int, optional): ROI half-width X. Defaults to 5.</span>
+<span class="sd">            dPY (int, optional): ROI half-width Y. Defaults to 5.</span>
+<span class="sd">            pixel_size_qxz (float, optional): Pixel size factor. Defaults to 0.055.</span>
+<span class="sd">            pixel_size_qy (float, optional): Pixel size factor. Defaults to 0.055.</span>
+<span class="sd">            energy_name (str, optional): Energy motor name. Defaults to &#39;eccmono&#39;.</span>
+<span class="sd">            I0 (float, optional): Intensity normalization. Defaults to 1e13.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="n">file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scans</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">scans</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i_name</span> <span class="o">=</span> <span class="n">alpha_i_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detector_name</span> <span class="o">=</span> <span class="n">detector_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitor_name</span> <span class="o">=</span> <span class="n">monitor_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transmission_name</span> <span class="o">=</span> <span class="n">transmission_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">att_name</span> <span class="o">=</span> <span class="n">att_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy_name</span> <span class="o">=</span> <span class="n">energy_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cnttime_name</span> <span class="o">=</span> <span class="n">cnttime_name</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">footprint_correction_applied</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">corrected_doubles</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">replaced_transmission</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_rebinned</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">=</span> <span class="n">PX0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">=</span> <span class="n">PY0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dPX</span> <span class="o">=</span> <span class="n">dPX</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span> <span class="o">=</span> <span class="n">dPY</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">I0</span> <span class="o">=</span> <span class="n">I0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_size_qy</span> <span class="o">=</span> <span class="n">pixel_size_qy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pixel_size_qxz</span> <span class="o">=</span> <span class="n">pixel_size_qxz</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">qz</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Qx_map</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Qz_map</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Smap2D</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Smap2D_e</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="c1"># Initialize data attributes to avoid attribute error if accessed before loading</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cnttime</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bckg</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">raw_counts</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__load_data__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__process_2D_data__</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__load_single_scan__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scan_n</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load data for a single scan.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            scan_n (str): Scan number as a string.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Any]: Dictionary containing loaded data components.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Loading scan #</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">scan_n</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">base_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">scan_n</span><span class="si">}</span><span class="s2">.1&quot;</span>
+            <span class="n">meas_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/measurement/&quot;</span>
+
+            <span class="n">data_dict</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">meas_path</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">detector_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)),</span>
+                <span class="s1">&#39;alpha_i&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">meas_path</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_i_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)),</span>
+                <span class="s1">&#39;monitor&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">meas_path</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">monitor_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)),</span>
+                <span class="s1">&#39;transmission&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">meas_path</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">transmission_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)),</span>
+                <span class="s1">&#39;attenuator&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">meas_path</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">att_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)),</span>
+                <span class="s1">&#39;cnttime&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">meas_path</span><span class="si">}{</span><span class="bp">self</span><span class="o">.</span><span class="n">cnttime_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)),</span>
+                <span class="s1">&#39;energy&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/instrument/positioners/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">energy_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)),</span>
+                <span class="s1">&#39;sample_name&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/sample/name/&quot;</span><span class="p">)[()])[</span><span class="mi">2</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">}</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Loaded scan #</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">scan_n</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data_dict</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__load_data__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">skip_points</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load data from all scans and concatenate them.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            skip_points (int, optional): Number of initial points to skip for subsequent scans. </span>
+<span class="sd">                Defaults to 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Start loading data.&quot;</span><span class="p">)</span>
+
+        <span class="n">first_scan_n</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scans</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">first_scan_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__load_single_scan__</span><span class="p">(</span><span class="n">first_scan_n</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">first_scan_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span> <span class="o">=</span> <span class="n">first_scan_data</span><span class="p">[</span><span class="s1">&#39;alpha_i&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span> <span class="o">=</span> <span class="n">first_scan_data</span><span class="p">[</span><span class="s1">&#39;monitor&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span> <span class="o">=</span> <span class="n">first_scan_data</span><span class="p">[</span><span class="s1">&#39;transmission&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span> <span class="o">=</span> <span class="n">first_scan_data</span><span class="p">[</span><span class="s1">&#39;attenuator&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cnttime</span> <span class="o">=</span> <span class="n">first_scan_data</span><span class="p">[</span><span class="s1">&#39;cnttime&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy</span> <span class="o">=</span> <span class="n">first_scan_data</span><span class="p">[</span><span class="s1">&#39;energy&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span> <span class="o">=</span> <span class="n">first_scan_data</span><span class="p">[</span><span class="s1">&#39;sample_name&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scans</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">scan_num</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scans</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+                <span class="n">scan_n</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">scan_num</span><span class="p">)</span>
+                <span class="n">scan_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__load_single_scan__</span><span class="p">(</span><span class="n">scan_n</span><span class="p">)</span>
+
+                <span class="c1"># Append with skipping points</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">scan_data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">skip_points</span><span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span><span class="p">,</span> <span class="n">scan_data</span><span class="p">[</span><span class="s1">&#39;alpha_i&#39;</span><span class="p">][</span><span class="n">skip_points</span><span class="p">:])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">,</span> <span class="n">scan_data</span><span class="p">[</span><span class="s1">&#39;monitor&#39;</span><span class="p">][</span><span class="n">skip_points</span><span class="p">:])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transmission</span><span class="p">,</span> <span class="n">scan_data</span><span class="p">[</span><span class="s1">&#39;transmission&#39;</span><span class="p">][</span><span class="n">skip_points</span><span class="p">:])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span><span class="p">,</span> <span class="n">scan_data</span><span class="p">[</span><span class="s1">&#39;attenuator&#39;</span><span class="p">][</span><span class="n">skip_points</span><span class="p">:])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cnttime</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cnttime</span><span class="p">,</span> <span class="n">scan_data</span><span class="p">[</span><span class="s1">&#39;cnttime&#39;</span><span class="p">][</span><span class="n">skip_points</span><span class="p">:])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy</span><span class="p">,</span> <span class="n">scan_data</span><span class="p">[</span><span class="s1">&#39;energy&#39;</span><span class="p">])</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading completed. Reading time </span><span class="si">%3.3f</span><span class="s2"> sec&quot;</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__process_2D_data__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process the 2D detector data to calculate reflectivity.</span>
+<span class="sd">        </span>
+<span class="sd">        Performs ROI integration for signal and background, calculates qz,</span>
+<span class="sd">        and normalizes by monitor and transmission.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Starting 2D data processing.&#39;</span><span class="p">)</span>
+        <span class="n">nic</span><span class="p">,</span> <span class="n">nxc</span><span class="p">,</span> <span class="n">nyc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># Handle legacy data where energy might be an array</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">energy</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="n">Qzcut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">nxc</span><span class="p">)</span>
+        <span class="n">Qzcut_bckg1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">nxc</span><span class="p">)</span>
+        <span class="n">Qzcut_bckg2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">nxc</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Smap2D</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Smap2D_e</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">Is_cut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nic</span><span class="p">)</span>  <span class="c1"># array for signal</span>
+        <span class="n">Ib_cut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nic</span><span class="p">)</span>  <span class="c1"># array for background</span>
+        <span class="n">Is_cut_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nic</span><span class="p">)</span>
+        <span class="n">Ib_cut_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nic</span><span class="p">)</span>
+        <span class="n">I_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nic</span><span class="p">)</span>
+
+        <span class="c1"># Pre-calculate slice indices for performance and readability</span>
+        <span class="n">roi_y_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">)</span>
+        <span class="n">roi_x_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPX</span><span class="p">)</span>
+
+        <span class="n">bkg_low_y_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">)</span>
+        <span class="n">bkg_high_y_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nic</span><span class="p">):</span>
+            <span class="c1"># Lower square background</span>
+            <span class="n">IqxyBL</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">bkg_low_y_slice</span><span class="p">,</span> <span class="n">roi_x_slice</span><span class="p">])</span>
+            <span class="c1"># Higher square background</span>
+            <span class="n">IqxyBH</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">bkg_high_y_slice</span><span class="p">,</span> <span class="n">roi_x_slice</span><span class="p">])</span>
+            <span class="c1"># Signal</span>
+            <span class="n">IqxyS</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">roi_y_slice</span><span class="p">,</span> <span class="n">roi_x_slice</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span><span class="p">):</span>
+                <span class="c1"># Qz cuts (sum along X axis for the ROI Y range)</span>
+                <span class="n">Qzcut</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">roi_y_slice</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">Qzcut_bckg1</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">bkg_low_y_slice</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">Qzcut_bckg2</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">bkg_high_y_slice</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+                <span class="n">norm_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">Smap2D</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">Qzcut</span><span class="p">[:]</span> <span class="o">-</span> <span class="p">(</span><span class="n">Qzcut_bckg1</span><span class="p">[:]</span> <span class="o">+</span> <span class="n">Qzcut_bckg2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">norm_factor</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">Smap2D_e</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">Qzcut</span><span class="p">[:]))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">Qzcut_bckg1</span><span class="p">[:]</span> <span class="o">+</span> <span class="n">Qzcut_bckg2</span><span class="p">[:])</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="n">norm_factor</span><span class="p">)</span>
+                <span class="p">)</span>
+
+            <span class="n">Ib_cut</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">IqxyBL</span> <span class="o">+</span> <span class="n">IqxyBH</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>  <span class="c1"># subtract true background</span>
+            <span class="n">Is_cut</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">IqxyS</span>
+            <span class="n">Is_cut_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Is_cut</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">Ib_cut_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Ib_cut</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Avoid division by zero</span>
+                <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+                    <span class="n">I_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">Is_cut_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">Is_cut</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">Ib_cut_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">Ib_cut</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">I_err</span><span class="p">[</span><span class="n">i</span><span class="p">]):</span>
+                        <span class="n">I_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">Is_cut_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">Is_cut</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">Is_cut</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                 <span class="n">I_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">Is_cut_err</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">Is_cut</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">Is_cut</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Number of points in the scan </span><span class="si">%6d</span><span class="s1">&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span><span class="p">))</span>
+
+        <span class="n">limit_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span><span class="p">)</span>
+        <span class="n">I_Signal_cut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">Is_cut</span><span class="p">[:</span><span class="n">limit_len</span><span class="p">],</span> <span class="n">nan</span><span class="o">=</span><span class="mf">1e-11</span><span class="p">)</span>
+        <span class="n">I_Backgr_cut</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">Ib_cut</span><span class="p">[:</span><span class="n">limit_len</span><span class="p">],</span> <span class="n">nan</span><span class="o">=</span><span class="mf">1e-11</span><span class="p">)</span>
+        <span class="n">I_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">I_err</span><span class="p">[:</span><span class="n">limit_len</span><span class="p">],</span> <span class="n">nan</span><span class="o">=</span><span class="mf">1e-11</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">qz</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mf">12.398</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy</span><span class="p">)</span>
+
+        <span class="c1"># Reflectivity calculation</span>
+        <span class="n">norm_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">=</span> <span class="p">(</span><span class="n">I_Signal_cut</span> <span class="o">-</span> <span class="n">I_Backgr_cut</span><span class="p">)</span> <span class="o">/</span> <span class="n">norm_factor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">I_error</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">bckg</span> <span class="o">=</span> <span class="n">I_Backgr_cut</span> <span class="o">/</span> <span class="n">norm_factor</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">I0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">raw_counts</span> <span class="o">=</span> <span class="n">I_Signal_cut</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">I0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">I0</span>
+
+        <span class="c1"># Clip values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">&lt;=</span> <span class="mf">1e-12</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-12</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span> <span class="o">&lt;=</span> <span class="mf">1e-13</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-13</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing completed. Processing time </span><span class="si">%3.3f</span><span class="s2"> sec&quot;</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span>
+
+<div class="viewcode-block" id="XRR.footprint_correction">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.footprint_correction">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">footprint_correction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">beamsize</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">9.6</span><span class="p">,</span> <span class="n">correct_dir_beam</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply footprint correction to the reflectivity data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sample_size (float, optional): Sample size in cm. Defaults to 1.</span>
+<span class="sd">            beamsize (float, optional): Beam size in microns. Defaults to 9.6.</span>
+<span class="sd">            correct_dir_beam (bool, optional): Whether to correct direct beam region. </span>
+<span class="sd">                Defaults to False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">footprint_correction_applied</span><span class="p">:</span>
+            <span class="n">Si_critical_angle</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mf">8.103E-02</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="mf">12.398</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy</span><span class="p">)</span>
+            <span class="n">samplesize_microns</span> <span class="o">=</span> <span class="n">sample_size</span> <span class="o">*</span> <span class="mi">10000</span>  <span class="c1"># converting cm to microns</span>
+
+            <span class="c1"># Avoid division by zero by using a small epsilon or handling alpha_i == 0</span>
+            <span class="n">footprint</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+                <span class="mf">0.5</span> <span class="o">*</span> <span class="n">beamsize</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">alpha</span><span class="p">))</span> <span class="k">if</span> <span class="n">alpha</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">beamsize</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">alpha</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span>
+            <span class="p">])</span>
+
+            <span class="n">beam_fraction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+                <span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">samplesize_microns</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ftp</span><span class="p">)</span> <span class="o">-</span> <span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="o">-</span><span class="n">samplesize_microns</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ftp</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">ftp</span> <span class="ow">in</span> <span class="n">footprint</span>
+            <span class="p">])</span>
+
+            <span class="n">Icor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">/</span> <span class="n">beam_fraction</span>
+
+            <span class="k">if</span> <span class="n">correct_dir_beam</span><span class="p">:</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">qz</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">qz</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">Si_critical_angle</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">Icor</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">1.15</span><span class="p">:</span>
+                        <span class="n">Icor</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">=</span> <span class="n">Icor</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">footprint_correction_applied</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Footprint correction completed with beam size = </span><span class="si">%s</span><span class="s1"> microns and sample size = </span><span class="si">%s</span><span class="s1"> cm&#39;</span><span class="p">,</span>
+                        <span class="n">beamsize</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Footprint correction already applied! To apply again use reprocess() method.&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="XRR.reprocess">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.reprocess">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reload and reprocess the data, resetting corrections.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__load_data__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__process_2D_data__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">footprint_correction_applied</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">corrected_doubles</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">replaced_transmission</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_rebinned</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Reloaded and reprocessed data.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="XRR.produce_Qmap">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.produce_Qmap">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">produce_Qmap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">SDD</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">900</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate Q-space map.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            SDD (float, optional): Sample-to-Detector Distance in mm. Defaults to 900.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Starting q-space mapping.&#39;</span><span class="p">)</span>
+        <span class="n">chi_r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span><span class="p">)</span>
+        <span class="n">pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">516</span><span class="p">))</span>
+
+        <span class="n">k0</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">/</span> <span class="p">(</span><span class="mf">12.398</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy</span><span class="p">)</span>
+
+        <span class="c1"># Using list comprehension inside array creation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Qz_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">k0</span> <span class="o">*</span> <span class="p">(</span><span class="n">sin</span><span class="p">(</span><span class="n">chi</span> <span class="o">+</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">-</span> <span class="n">px</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_size_qxz</span> <span class="o">/</span> <span class="n">SDD</span><span class="p">))</span> <span class="o">+</span> <span class="n">sin</span><span class="p">(</span><span class="n">chi</span><span class="p">)),</span> <span class="mi">10</span><span class="p">)</span> <span class="k">for</span> <span class="n">px</span> <span class="ow">in</span> <span class="n">pixels</span><span class="p">]</span>
+             <span class="k">for</span> <span class="n">chi</span> <span class="ow">in</span> <span class="n">chi_r</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Qx_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">k0</span> <span class="o">*</span> <span class="p">(</span><span class="n">cos</span><span class="p">(</span><span class="n">chi</span> <span class="o">+</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">-</span> <span class="n">px</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pixel_size_qxz</span> <span class="o">/</span> <span class="n">SDD</span><span class="p">))</span> <span class="o">-</span> <span class="n">cos</span><span class="p">(</span><span class="n">chi</span><span class="p">)),</span> <span class="mi">10</span><span class="p">)</span> <span class="k">for</span> <span class="n">px</span> <span class="ow">in</span> <span class="n">pixels</span><span class="p">]</span>
+             <span class="k">for</span> <span class="n">chi</span> <span class="ow">in</span> <span class="n">chi_r</span><span class="p">])</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;2D map calculated. Processing time </span><span class="si">%3.3f</span><span class="s2"> sec&quot;</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="XRR.plot_Qmap">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.plot_Qmap">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_Qmap</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">fig</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot the Q-space map.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            save (bool, optional): Whether to save the plot. Defaults to False.</span>
+<span class="sd">            fig (Optional[plt.Figure], optional): Matplotlib figure object. Defaults to None.</span>
+<span class="sd">            axes (Optional[plt.Axes], optional): Matplotlib axes object. Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[plt.Figure, plt.Axes]: The figure and axes objects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax0</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax0</span> <span class="o">=</span> <span class="n">axes</span>
+            <span class="k">if</span> <span class="n">fig</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fig</span> <span class="o">=</span> <span class="n">ax0</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+
+        <span class="c1"># Check if Qx_map and Qz_map are computed</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qx_map</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qz_map</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">produce_Qmap</span><span class="p">()</span>
+
+        <span class="n">ax0</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Qx_map</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qz_map</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Smap2D</span><span class="p">),</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;jet&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                       <span class="n">shading</span><span class="o">=</span><span class="s1">&#39;gouraud&#39;</span><span class="p">,</span> <span class="n">snap</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">ax0</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$q_x, \AA^{-1}$&#39;</span><span class="p">)</span>
+        <span class="n">ax0</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$q_z, \AA^{-1}$&#39;</span><span class="p">)</span>
+        <span class="n">ax0</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+        <span class="n">ax0</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">2e-4</span><span class="p">,</span> <span class="mf">0.0005</span><span class="p">)</span>
+        <span class="n">ax0</span><span class="o">.</span><span class="n">ticklabel_format</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;sci&#39;</span><span class="p">,</span> <span class="n">scilimits</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">save</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Saving Q-space map.&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;Qmap_</span><span class="si">{}</span><span class="s1">_scan_</span><span class="si">{}</span><span class="s1">.png&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">scans</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax0</span></div>
+
+
+<div class="viewcode-block" id="XRR.get_reflectivity">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.get_reflectivity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the reflectivity data sorted by qz.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Array containing [qz, reflectivity, reflectivity_error].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Ensure indices sort by qz</span>
+        <span class="n">sort_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qz</span><span class="o">.</span><span class="n">argsort</span><span class="p">()</span>
+        <span class="n">qz_tr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">qz</span><span class="p">)</span> <span class="c1"># or self.qz[sort_indices]</span>
+        <span class="n">R_tr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">[</span><span class="n">sort_indices</span><span class="p">]</span>
+        <span class="n">Rerr_tr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span><span class="p">[</span><span class="n">sort_indices</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">qz_tr</span><span class="p">,</span> <span class="n">R_tr</span><span class="p">,</span> <span class="n">Rerr_tr</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="XRR.plot_reflectivity">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.plot_reflectivity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot the reflectivity curve.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            save (bool, optional): Whether to save the plot. Defaults to False.</span>
+<span class="sd">            ax (Optional[plt.Axes], optional): Matplotlib axes object. Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[plt.Figure, plt.Axes]: The figure and axes objects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">(),</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">top</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([</span><span class="mf">1e-10</span><span class="p">,</span> <span class="mf">1e-8</span><span class="p">,</span> <span class="mf">1e-6</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$q_z, \AA^{-1}$&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$\mathrm</span><span class="si">{Reflectivity}</span><span class="s1">$&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">save</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Saving reflectivity plot.&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;XRR_</span><span class="si">{}</span><span class="s1">_scan_</span><span class="si">{}</span><span class="s1">.png&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">scans</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+
+
+<div class="viewcode-block" id="XRR.plot_reflectivity_qz4">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.plot_reflectivity_qz4">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_reflectivity_qz4</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot reflectivity multiplied by qz^4 (Porod plot).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            save (bool, optional): Whether to save the plot. Defaults to False.</span>
+<span class="sd">            ax (Optional[plt.Axes], optional): Matplotlib axes object. Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[plt.Figure, plt.Axes]: The figure and axes objects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">qz</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">qz</span> <span class="o">**</span> <span class="mi">4</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">qz</span> <span class="o">**</span> <span class="mi">4</span><span class="p">,</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$q_z, \AA^{-1}$&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$\mathrm</span><span class="si">{Reflectivity}</span><span class="s1">\cdot q_z^4$&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">save</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Saving reflectivity * qz**4 plot.&#39;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;XRR_</span><span class="si">{}</span><span class="s1">_scan_qz4_</span><span class="si">{}</span><span class="s1">.png&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">scans</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+
+
+<div class="viewcode-block" id="XRR.save_reflectivity">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.save_reflectivity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save the reflectivity data to a text file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            filename (Union[bool, str], optional): Filename to save to. Defaults to False (auto-generated).</span>
+<span class="sd">            directory (str, optional): Directory to save to. Defaults to None (current dir).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">directory</span><span class="p">:</span>
+            <span class="n">directory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">filename</span><span class="p">:</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_name</span> <span class="o">+</span> <span class="s1">&#39;_xrr_scan_</span><span class="si">{}</span><span class="s1">.dat&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scans</span><span class="p">)</span>
+
+        <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        <span class="n">_to_save</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">_to_save</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Reflectivity saved to: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">filepath</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="XRR.show_detector_image">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.show_detector_image">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">show_detector_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">ax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">plot_cross</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show a single frame of the detector image with ROI and background regions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            frame_number (int, optional): Frame number to display. Defaults to 50.</span>
+<span class="sd">            ax (Optional[plt.Axes], optional): Matplotlib axes object. Defaults to None.</span>
+<span class="sd">            plot_cross (bool, optional): Whether to plot crosshairs at beam center. Defaults to True.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">frame_number</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-3</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">-</span> <span class="mi">10</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">+</span> <span class="mi">10</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">-</span> <span class="mi">10</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">+</span> <span class="mi">10</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">)</span>
+
+        <span class="n">signal</span> <span class="o">=</span> <span class="n">patches</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">),</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPX</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                   <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Signal&#39;</span><span class="p">)</span>
+        <span class="n">b1</span> <span class="o">=</span> <span class="n">patches</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">),</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPX</span><span class="p">,</span>
+                               <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;cyan&#39;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Background&#39;</span><span class="p">)</span>
+        <span class="n">b2</span> <span class="o">=</span> <span class="n">patches</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">),</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPX</span><span class="p">,</span>
+                               <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dPY</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;cyan&#39;</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">b1</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">b2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plot_cross</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">hlines</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PY0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">-</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PX0</span> <span class="o">+</span> <span class="mi">30</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">vlines</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PX0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">-</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PY0</span> <span class="o">+</span> <span class="mi">30</span><span class="p">)</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Detector pixel, X&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Detector pixel, Y&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Detector </span><span class="si">{}</span><span class="s1">, frame #</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">detector_name</span><span class="p">,</span> <span class="n">frame_number</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="XRR.replace_transmission">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.replace_transmission">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">replace_transmission</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filter_transmission</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">float</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Replace transmission values using a dictionary of filter transmissions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            filter_transmission (Dict[Any, float]): Mapping of attenuator position to transmission.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_new_transmission</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+        <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span><span class="p">:</span>
+            <span class="n">_new_transmission</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_new_transmission</span><span class="p">,</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">filter_transmission</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))])</span>
+
+        <span class="c1"># Calculate scaling factor</span>
+        <span class="c1"># Avoid division by zero</span>
+        <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">):</span>
+             <span class="n">scaling_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span> <span class="o">/</span> <span class="n">_new_transmission</span>
+
+        <span class="n">new_reflectivity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">*</span> <span class="n">scaling_factor</span>
+        <span class="n">new_reflectivity_error</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span> <span class="o">*</span> <span class="n">scaling_factor</span>
+        <span class="n">new_background</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bckg</span> <span class="o">*</span> <span class="n">scaling_factor</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span> <span class="o">=</span> <span class="n">_new_transmission</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">=</span> <span class="n">new_reflectivity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span> <span class="o">=</span> <span class="n">new_reflectivity_error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bckg</span> <span class="o">=</span> <span class="n">new_background</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">replaced_transmission</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Transmission corrected. Recalculation will reset it to defaults.&#39;</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_find_double_</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find indices of repeated values in an array.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (np.ndarray): Input array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[float, np.ndarray]: Dictionary mapping values to their indices.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">u</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">values_of_interest</span> <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="n">c</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">indexes_multiple_values</span> <span class="o">=</span> <span class="p">{</span><span class="n">value</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="n">value</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values_of_interest</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">indexes_multiple_values</span>
+
+<div class="viewcode-block" id="XRR.calculate_corrected_transmission">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.calculate_corrected_transmission">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_corrected_transmission</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate corrected transmission based on overlapping points (doubles).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[Any, float]: Dictionary of corrected transmissions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_new_transmission_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">replaced_transmission</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Transmission was changed. Consider reprocessing data.&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">double_x</span> <span class="o">=</span> <span class="n">XRR</span><span class="o">.</span><span class="n">_find_double_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">qz</span><span class="p">)</span>
+            <span class="n">sorted_double_x</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">double_x</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+            <span class="n">coeff</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="c1"># This logic assumes the array is sorted by angle/qz in general but contains overlaps</span>
+            <span class="c1"># It calculates ratio between the last point of the first segment and first point of second segment</span>
+            <span class="c1"># for a given Q value.</span>
+            <span class="c1"># Note: i is the key (qz value), sorted_double_x[i] are indices</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sorted_double_x</span><span class="p">:</span>
+                <span class="n">indices</span> <span class="o">=</span> <span class="n">sorted_double_x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="c1"># Assuming indices are ordered like [idx1, idx2], where idx1 is from higher intensity (lower attenuation) usually?</span>
+                <span class="c1"># The original code used [-2] and [-1].</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                     <span class="n">coeff</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">[</span><span class="n">indices</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">[</span><span class="n">indices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">coeff</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span> <span class="c1"># Fallback</span>
+
+            <span class="n">coeff_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;coeff&#39;</span><span class="p">:</span> <span class="n">k</span><span class="p">,</span> <span class="s1">&#39;indexes&#39;</span><span class="p">:</span> <span class="n">sorted_double_x</span><span class="p">[</span><span class="n">i</span><span class="p">]}</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">sorted_double_x</span><span class="p">,</span> <span class="n">coeff</span><span class="p">)}</span>
+
+            <span class="n">_new_transm</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transmission</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">coeff_dict</span><span class="p">:</span>
+                <span class="c1"># Apply correction to all points before the overlap</span>
+                <span class="c1"># This assumes scan direction and that overlaps are sequential adjustments</span>
+                <span class="n">idx_limit</span> <span class="o">=</span> <span class="n">coeff_dict</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;indexes&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">_new_transm</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">idx_limit</span><span class="p">]</span> <span class="o">=</span> <span class="n">_new_transm</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">idx_limit</span><span class="p">]</span> <span class="o">*</span> <span class="n">coeff_dict</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;coeff&#39;</span><span class="p">]</span>
+
+            <span class="n">_new_transmission_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span><span class="p">,</span> <span class="n">_new_transm</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">_new_transmission_dict</span></div>
+
+
+<div class="viewcode-block" id="XRR.correct_doubles">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.correct_doubles">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">correct_doubles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Correct transmission using overlapping points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">corrected_doubles</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Correcting transmission using double points.&#39;</span><span class="p">)</span>
+            <span class="n">new_transm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_corrected_transmission</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">replace_transmission</span><span class="p">(</span><span class="n">new_transm</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">corrected_doubles</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Double points already corrected.&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="XRR.do_rebin">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.do_rebin">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">do_rebin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Rebin the reflectivity data.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            *args: Arguments passed to rebin function.</span>
+<span class="sd">            **kwargs: Keyword arguments passed to rebin function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new_qz</span><span class="p">,</span> <span class="n">new_R</span><span class="p">,</span> <span class="n">new_R_err</span> <span class="o">=</span> <span class="n">rebin</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">(),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qz</span> <span class="o">=</span> <span class="n">new_qz</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span> <span class="o">=</span> <span class="n">new_R</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity_error</span> <span class="o">=</span> <span class="n">new_R_err</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_rebinned</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="XRR.find_i0_from_z_scan">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.find_i0_from_z_scan">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find_i0_from_z_scan</span><span class="p">(</span><span class="n">z</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">I</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find I0 (direct beam intensity) from a Z-scan.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            z (np.ndarray): Z positions (or angles).</span>
+<span class="sd">            I (np.ndarray): Intensity.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[float, int]: I0 value and index of maximum intensity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+        <span class="c1"># Heuristic to find background cutoff</span>
+        <span class="n">I_cutoff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">I</span><span class="p">[:</span><span class="n">n_max</span><span class="p">])</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">I</span><span class="p">[:</span><span class="n">n_max</span><span class="p">])</span> <span class="o">**</span> <span class="mf">0.5</span>
+        <span class="n">zscan_new</span> <span class="o">=</span> <span class="n">I</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">I</span> <span class="o">&gt;=</span> <span class="n">I_cutoff</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">zscan_new</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">I0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">zscan_new</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">I0</span> <span class="o">=</span> <span class="n">I</span><span class="p">[</span><span class="n">n_max</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">I0</span><span class="p">,</span> <span class="n">n_max</span></div>
+
+
+<div class="viewcode-block" id="XRR.find_i0">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.find_i0">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">find_i0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to_print</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find I0, attenuator and transmission at the peak.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            to_print (bool, optional): Whether to print details. Defaults to True.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[float, Any, float]: I0, attenuator value, transmission value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">to_print</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Processing scan of motor </span><span class="si">%s</span><span class="s1">.&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i_name</span><span class="p">)</span>
+
+        <span class="n">I0</span><span class="p">,</span> <span class="n">n_max</span> <span class="o">=</span> <span class="n">XRR</span><span class="o">.</span><span class="n">find_i0_from_z_scan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">to_print</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;I0 = </span><span class="si">%.5e</span><span class="s1">, attenuator = </span><span class="si">%s</span><span class="s1">, transmission = </span><span class="si">%.5e</span><span class="s1">&#39;</span><span class="p">,</span>
+                        <span class="n">I0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span><span class="p">[</span><span class="n">n_max</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span><span class="p">[</span><span class="n">n_max</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">I0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span><span class="p">[</span><span class="n">n_max</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span><span class="p">[</span><span class="n">n_max</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_assert_i0_from_calc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">calc_I0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">atten</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">transmission</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Internal method to update I0 from calculated values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;zgh&#39;</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;You are trying to replace I0 in zgH scan. Load reflectivity data.&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">atten</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">corrected_doubles</span><span class="p">:</span>
+                    <span class="c1"># Find indices where attenuator matches</span>
+                    <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span> <span class="o">==</span> <span class="n">atten</span><span class="p">)</span>
+                    <span class="c1"># Use the transmission of the first matching point for adjustment</span>
+                    <span class="c1"># This logic seems specific to the beamline workflow</span>
+                    <span class="n">current_transmission</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span><span class="p">[</span><span class="n">indices</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">I0</span> <span class="o">=</span> <span class="n">calc_I0</span> <span class="o">*</span> <span class="n">transmission</span> <span class="o">/</span> <span class="n">current_transmission</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">I0</span> <span class="o">=</span> <span class="n">I0</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;I0 replaced.&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Attenuator </span><span class="si">%s</span><span class="s1"> not found in the scan of motor </span><span class="si">%s</span><span class="s1">.</span><span class="se">\n</span><span class="s1">Check inputs.&#39;</span><span class="p">,</span>
+                               <span class="n">atten</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span><span class="p">)</span>
+
+<div class="viewcode-block" id="XRR.assert_i0">
+<a class="viewcode-back" href="../XRR.html#XRR.XRR.assert_i0">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">assert_i0</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">zgH_scan</span><span class="p">:</span> <span class="s1">&#39;XRR&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Assert I0 from a zgH scan (direct beam scan).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            zgH_scan (XRR): Another XRR object representing the direct beam scan.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;zgh&#39;</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;You are trying to replace I0 in zgH scan. Load reflectivity data.&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">calc_I0</span><span class="p">,</span> <span class="n">atten</span><span class="p">,</span> <span class="n">transmission</span> <span class="o">=</span> <span class="n">zgH_scan</span><span class="o">.</span><span class="n">find_i0</span><span class="p">(</span><span class="n">to_print</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">calc_I0</span> <span class="o">=</span> <span class="n">calc_I0</span> <span class="o">*</span> <span class="n">zgH_scan</span><span class="o">.</span><span class="n">monitor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">atten</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">corrected_doubles</span><span class="p">:</span>
+                    <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attenuator</span> <span class="o">==</span> <span class="n">atten</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">current_trans</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transmission</span><span class="p">[</span><span class="n">indices</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span>
+                        <span class="n">I0</span> <span class="o">=</span> <span class="n">calc_I0</span> <span class="o">*</span> <span class="n">transmission</span> <span class="o">/</span> <span class="n">current_trans</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">I0</span> <span class="o">=</span> <span class="n">I0</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;I0 replaced.&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Attenuator </span><span class="si">%s</span><span class="s1"> not found in the scan of motor </span><span class="si">%s</span><span class="s1">.</span><span class="se">\n</span><span class="s1">Check inputs.&#39;</span><span class="p">,</span>
+                               <span class="n">atten</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_i</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Author.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

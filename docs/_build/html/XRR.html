@@ -1,0 +1,750 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XRR module &mdash; XRR Processing 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="XRR Processing" href="modules.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="index.html" class="icon icon-home">
+            XRR Processing
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">XRR Processing</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">XRR module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#XRR.XRR"><code class="docutils literal notranslate"><span class="pre">XRR</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.file"><code class="docutils literal notranslate"><span class="pre">XRR.file</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.scans"><code class="docutils literal notranslate"><span class="pre">XRR.scans</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.alpha_i_name"><code class="docutils literal notranslate"><span class="pre">XRR.alpha_i_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.detector_name"><code class="docutils literal notranslate"><span class="pre">XRR.detector_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.monitor_name"><code class="docutils literal notranslate"><span class="pre">XRR.monitor_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.transmission_name"><code class="docutils literal notranslate"><span class="pre">XRR.transmission_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.att_name"><code class="docutils literal notranslate"><span class="pre">XRR.att_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.energy_name"><code class="docutils literal notranslate"><span class="pre">XRR.energy_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.cnttime_name"><code class="docutils literal notranslate"><span class="pre">XRR.cnttime_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.PX0"><code class="docutils literal notranslate"><span class="pre">XRR.PX0</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.PY0"><code class="docutils literal notranslate"><span class="pre">XRR.PY0</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.dPX"><code class="docutils literal notranslate"><span class="pre">XRR.dPX</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.dPY"><code class="docutils literal notranslate"><span class="pre">XRR.dPY</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.pixel_size_qxz"><code class="docutils literal notranslate"><span class="pre">XRR.pixel_size_qxz</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.pixel_size_qy"><code class="docutils literal notranslate"><span class="pre">XRR.pixel_size_qy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.I0"><code class="docutils literal notranslate"><span class="pre">XRR.I0</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.footprint_correction_applied"><code class="docutils literal notranslate"><span class="pre">XRR.footprint_correction_applied</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.corrected_doubles"><code class="docutils literal notranslate"><span class="pre">XRR.corrected_doubles</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.replaced_transmission"><code class="docutils literal notranslate"><span class="pre">XRR.replaced_transmission</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.is_rebinned"><code class="docutils literal notranslate"><span class="pre">XRR.is_rebinned</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.qz"><code class="docutils literal notranslate"><span class="pre">XRR.qz</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.reflectivity"><code class="docutils literal notranslate"><span class="pre">XRR.reflectivity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.reflectivity_error"><code class="docutils literal notranslate"><span class="pre">XRR.reflectivity_error</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.Smap2D"><code class="docutils literal notranslate"><span class="pre">XRR.Smap2D</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.Smap2D_e"><code class="docutils literal notranslate"><span class="pre">XRR.Smap2D_e</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.Qx_map"><code class="docutils literal notranslate"><span class="pre">XRR.Qx_map</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.Qz_map"><code class="docutils literal notranslate"><span class="pre">XRR.Qz_map</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.sample_name"><code class="docutils literal notranslate"><span class="pre">XRR.sample_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.assert_i0"><code class="docutils literal notranslate"><span class="pre">XRR.assert_i0()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.calculate_corrected_transmission"><code class="docutils literal notranslate"><span class="pre">XRR.calculate_corrected_transmission()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.correct_doubles"><code class="docutils literal notranslate"><span class="pre">XRR.correct_doubles()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.do_rebin"><code class="docutils literal notranslate"><span class="pre">XRR.do_rebin()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.find_i0"><code class="docutils literal notranslate"><span class="pre">XRR.find_i0()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.find_i0_from_z_scan"><code class="docutils literal notranslate"><span class="pre">XRR.find_i0_from_z_scan()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.footprint_correction"><code class="docutils literal notranslate"><span class="pre">XRR.footprint_correction()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.get_reflectivity"><code class="docutils literal notranslate"><span class="pre">XRR.get_reflectivity()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.plot_Qmap"><code class="docutils literal notranslate"><span class="pre">XRR.plot_Qmap()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.plot_reflectivity"><code class="docutils literal notranslate"><span class="pre">XRR.plot_reflectivity()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.plot_reflectivity_qz4"><code class="docutils literal notranslate"><span class="pre">XRR.plot_reflectivity_qz4()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.produce_Qmap"><code class="docutils literal notranslate"><span class="pre">XRR.produce_Qmap()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.replace_transmission"><code class="docutils literal notranslate"><span class="pre">XRR.replace_transmission()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.reprocess"><code class="docutils literal notranslate"><span class="pre">XRR.reprocess()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.save_reflectivity"><code class="docutils literal notranslate"><span class="pre">XRR.save_reflectivity()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#XRR.XRR.show_detector_image"><code class="docutils literal notranslate"><span class="pre">XRR.show_detector_image()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#XRR.rebin"><code class="docutils literal notranslate"><span class="pre">rebin()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRR Processing</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">XRR Processing</a></li>
+      <li class="breadcrumb-item active">XRR module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/XRR.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <section id="module-XRR">
+<span id="xrr-module"></span><h1>XRR module<a class="headerlink" href="#module-XRR" title="Link to this heading"></a></h1>
+<p>X-ray Reflectivity (XRR) processing library.</p>
+<p>This library is used for the processing of Surface X-ray Scattering data
+obtained on the ID10 beamline at ESRF.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="XRR.XRR">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">XRR.</span></span><span class="sig-name descname"><span class="pre">XRR</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scans</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha_i_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'chi'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detector_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'mpx_cdte_22_eh1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">monitor_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'mon'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transmission_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'transm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">att_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'curratt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cnttime_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'sec'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PX0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">404</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">PY0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">165</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dPX</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dPY</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size_qxz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.055</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size_qy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.055</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'eccmono'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">I0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10000000000000.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class for the processing of Surface X-ray Scattering data.</p>
+<p>This class handles loading h5 files, region-of-interest based integration
+of 2D detector data, corrections (footprint, transmission), and plotting.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.file">
+<span class="sig-name descname"><span class="pre">file</span></span><a class="headerlink" href="#XRR.XRR.file" title="Link to this definition"></a></dt>
+<dd><p>Path to the HDF5 file containing the data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.scans">
+<span class="sig-name descname"><span class="pre">scans</span></span><a class="headerlink" href="#XRR.XRR.scans" title="Link to this definition"></a></dt>
+<dd><p>Array of scan numbers to process.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.alpha_i_name">
+<span class="sig-name descname"><span class="pre">alpha_i_name</span></span><a class="headerlink" href="#XRR.XRR.alpha_i_name" title="Link to this definition"></a></dt>
+<dd><p>Name of the incident angle motor/counter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.detector_name">
+<span class="sig-name descname"><span class="pre">detector_name</span></span><a class="headerlink" href="#XRR.XRR.detector_name" title="Link to this definition"></a></dt>
+<dd><p>Name of the detector data entry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.monitor_name">
+<span class="sig-name descname"><span class="pre">monitor_name</span></span><a class="headerlink" href="#XRR.XRR.monitor_name" title="Link to this definition"></a></dt>
+<dd><p>Name of the monitor counter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.transmission_name">
+<span class="sig-name descname"><span class="pre">transmission_name</span></span><a class="headerlink" href="#XRR.XRR.transmission_name" title="Link to this definition"></a></dt>
+<dd><p>Name of the transmission counter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.att_name">
+<span class="sig-name descname"><span class="pre">att_name</span></span><a class="headerlink" href="#XRR.XRR.att_name" title="Link to this definition"></a></dt>
+<dd><p>Name of the attenuator positioner.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.energy_name">
+<span class="sig-name descname"><span class="pre">energy_name</span></span><a class="headerlink" href="#XRR.XRR.energy_name" title="Link to this definition"></a></dt>
+<dd><p>Name of the energy positioner.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.cnttime_name">
+<span class="sig-name descname"><span class="pre">cnttime_name</span></span><a class="headerlink" href="#XRR.XRR.cnttime_name" title="Link to this definition"></a></dt>
+<dd><p>Name of the counting time counter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.PX0">
+<span class="sig-name descname"><span class="pre">PX0</span></span><a class="headerlink" href="#XRR.XRR.PX0" title="Link to this definition"></a></dt>
+<dd><p>Direct beam X pixel coordinate on detector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.PY0">
+<span class="sig-name descname"><span class="pre">PY0</span></span><a class="headerlink" href="#XRR.XRR.PY0" title="Link to this definition"></a></dt>
+<dd><p>Direct beam Y pixel coordinate on detector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.dPX">
+<span class="sig-name descname"><span class="pre">dPX</span></span><a class="headerlink" href="#XRR.XRR.dPX" title="Link to this definition"></a></dt>
+<dd><p>Half-width of the ROI in X direction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.dPY">
+<span class="sig-name descname"><span class="pre">dPY</span></span><a class="headerlink" href="#XRR.XRR.dPY" title="Link to this definition"></a></dt>
+<dd><p>Half-width of the ROI in Y direction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.pixel_size_qxz">
+<span class="sig-name descname"><span class="pre">pixel_size_qxz</span></span><a class="headerlink" href="#XRR.XRR.pixel_size_qxz" title="Link to this definition"></a></dt>
+<dd><p>Pixel size in reciprocal space (x/z).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.pixel_size_qy">
+<span class="sig-name descname"><span class="pre">pixel_size_qy</span></span><a class="headerlink" href="#XRR.XRR.pixel_size_qy" title="Link to this definition"></a></dt>
+<dd><p>Pixel size in reciprocal space (y).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.I0">
+<span class="sig-name descname"><span class="pre">I0</span></span><a class="headerlink" href="#XRR.XRR.I0" title="Link to this definition"></a></dt>
+<dd><p>Incident intensity normalization factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.footprint_correction_applied">
+<span class="sig-name descname"><span class="pre">footprint_correction_applied</span></span><a class="headerlink" href="#XRR.XRR.footprint_correction_applied" title="Link to this definition"></a></dt>
+<dd><p>Flag if footprint correction was applied.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.corrected_doubles">
+<span class="sig-name descname"><span class="pre">corrected_doubles</span></span><a class="headerlink" href="#XRR.XRR.corrected_doubles" title="Link to this definition"></a></dt>
+<dd><p>Flag if double points were corrected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.replaced_transmission">
+<span class="sig-name descname"><span class="pre">replaced_transmission</span></span><a class="headerlink" href="#XRR.XRR.replaced_transmission" title="Link to this definition"></a></dt>
+<dd><p>Flag if transmission was manually replaced.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.is_rebinned">
+<span class="sig-name descname"><span class="pre">is_rebinned</span></span><a class="headerlink" href="#XRR.XRR.is_rebinned" title="Link to this definition"></a></dt>
+<dd><p>Flag if data has been rebinned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.qz">
+<span class="sig-name descname"><span class="pre">qz</span></span><a class="headerlink" href="#XRR.XRR.qz" title="Link to this definition"></a></dt>
+<dd><p>Calculated qz vector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.reflectivity">
+<span class="sig-name descname"><span class="pre">reflectivity</span></span><a class="headerlink" href="#XRR.XRR.reflectivity" title="Link to this definition"></a></dt>
+<dd><p>Calculated reflectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.reflectivity_error">
+<span class="sig-name descname"><span class="pre">reflectivity_error</span></span><a class="headerlink" href="#XRR.XRR.reflectivity_error" title="Link to this definition"></a></dt>
+<dd><p>Calculated reflectivity error.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.Smap2D">
+<span class="sig-name descname"><span class="pre">Smap2D</span></span><a class="headerlink" href="#XRR.XRR.Smap2D" title="Link to this definition"></a></dt>
+<dd><p>List of 2D maps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.Smap2D_e">
+<span class="sig-name descname"><span class="pre">Smap2D_e</span></span><a class="headerlink" href="#XRR.XRR.Smap2D_e" title="Link to this definition"></a></dt>
+<dd><p>List of 2D map errors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.Qx_map">
+<span class="sig-name descname"><span class="pre">Qx_map</span></span><a class="headerlink" href="#XRR.XRR.Qx_map" title="Link to this definition"></a></dt>
+<dd><p>Qx map for 2D plotting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.Qz_map">
+<span class="sig-name descname"><span class="pre">Qz_map</span></span><a class="headerlink" href="#XRR.XRR.Qz_map" title="Link to this definition"></a></dt>
+<dd><p>Qz map for 2D plotting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="XRR.XRR.sample_name">
+<span class="sig-name descname"><span class="pre">sample_name</span></span><a class="headerlink" href="#XRR.XRR.sample_name" title="Link to this definition"></a></dt>
+<dd><p>Name of the sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.assert_i0">
+<span class="sig-name descname"><span class="pre">assert_i0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zgH_scan</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#XRR.XRR" title="XRR.XRR"><span class="pre">XRR</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR.assert_i0"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.assert_i0" title="Link to this definition"></a></dt>
+<dd><p>Assert I0 from a zgH scan (direct beam scan).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>zgH_scan</strong> (<a class="reference internal" href="#XRR.XRR" title="XRR.XRR"><em>XRR</em></a>) – Another XRR object representing the direct beam scan.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.calculate_corrected_transmission">
+<span class="sig-name descname"><span class="pre">calculate_corrected_transmission</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/XRR.html#XRR.calculate_corrected_transmission"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.calculate_corrected_transmission" title="Link to this definition"></a></dt>
+<dd><p>Calculate corrected transmission based on overlapping points (doubles).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary of corrected transmissions.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[Any, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.correct_doubles">
+<span class="sig-name descname"><span class="pre">correct_doubles</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR.correct_doubles"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.correct_doubles" title="Link to this definition"></a></dt>
+<dd><p>Correct transmission using overlapping points.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.do_rebin">
+<span class="sig-name descname"><span class="pre">do_rebin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR.do_rebin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.do_rebin" title="Link to this definition"></a></dt>
+<dd><p>Rebin the reflectivity data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> – Arguments passed to rebin function.</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments passed to rebin function.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.find_i0">
+<span class="sig-name descname"><span class="pre">find_i0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">to_print</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/XRR.html#XRR.find_i0"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.find_i0" title="Link to this definition"></a></dt>
+<dd><p>Find I0, attenuator and transmission at the peak.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>to_print</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print details. Defaults to True.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>I0, attenuator value, transmission value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[float, Any, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.find_i0_from_z_scan">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">find_i0_from_z_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">I</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/XRR.html#XRR.find_i0_from_z_scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.find_i0_from_z_scan" title="Link to this definition"></a></dt>
+<dd><p>Find I0 (direct beam intensity) from a Z-scan.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>np.ndarray</em>) – Z positions (or angles).</p></li>
+<li><p><strong>I</strong> (<em>np.ndarray</em>) – Intensity.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>I0 value and index of maximum intensity.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[float, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.footprint_correction">
+<span class="sig-name descname"><span class="pre">footprint_correction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beamsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">9.6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">correct_dir_beam</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR.footprint_correction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.footprint_correction" title="Link to this definition"></a></dt>
+<dd><p>Apply footprint correction to the reflectivity data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sample_size</strong> (<em>float</em><em>, </em><em>optional</em>) – Sample size in cm. Defaults to 1.</p></li>
+<li><p><strong>beamsize</strong> (<em>float</em><em>, </em><em>optional</em>) – Beam size in microns. Defaults to 9.6.</p></li>
+<li><p><strong>correct_dir_beam</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to correct direct beam region.
+Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.get_reflectivity">
+<span class="sig-name descname"><span class="pre">get_reflectivity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="_modules/XRR.html#XRR.get_reflectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.get_reflectivity" title="Link to this definition"></a></dt>
+<dd><p>Get the reflectivity data sorted by qz.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Array containing [qz, reflectivity, reflectivity_error].</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.plot_Qmap">
+<span class="sig-name descname"><span class="pre">plot_Qmap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fig</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">matplotlib.pyplot.Figure</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">matplotlib.pyplot.Axes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.pyplot.Figure</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">matplotlib.pyplot.Axes</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/XRR.html#XRR.plot_Qmap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.plot_Qmap" title="Link to this definition"></a></dt>
+<dd><p>Plot the Q-space map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>save</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to save the plot. Defaults to False.</p></li>
+<li><p><strong>fig</strong> (<em>Optional</em><em>[</em><em>plt.Figure</em><em>]</em><em>, </em><em>optional</em>) – Matplotlib figure object. Defaults to None.</p></li>
+<li><p><strong>axes</strong> (<em>Optional</em><em>[</em><em>plt.Axes</em><em>]</em><em>, </em><em>optional</em>) – Matplotlib axes object. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The figure and axes objects.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[plt.Figure, plt.Axes]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.plot_reflectivity">
+<span class="sig-name descname"><span class="pre">plot_reflectivity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">matplotlib.pyplot.Axes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.pyplot.Figure</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">matplotlib.pyplot.Axes</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/XRR.html#XRR.plot_reflectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.plot_reflectivity" title="Link to this definition"></a></dt>
+<dd><p>Plot the reflectivity curve.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>save</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to save the plot. Defaults to False.</p></li>
+<li><p><strong>ax</strong> (<em>Optional</em><em>[</em><em>plt.Axes</em><em>]</em><em>, </em><em>optional</em>) – Matplotlib axes object. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The figure and axes objects.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[plt.Figure, plt.Axes]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.plot_reflectivity_qz4">
+<span class="sig-name descname"><span class="pre">plot_reflectivity_qz4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">matplotlib.pyplot.Axes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.pyplot.Figure</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">matplotlib.pyplot.Axes</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/XRR.html#XRR.plot_reflectivity_qz4"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.plot_reflectivity_qz4" title="Link to this definition"></a></dt>
+<dd><p>Plot reflectivity multiplied by qz^4 (Porod plot).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>save</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to save the plot. Defaults to False.</p></li>
+<li><p><strong>ax</strong> (<em>Optional</em><em>[</em><em>plt.Axes</em><em>]</em><em>, </em><em>optional</em>) – Matplotlib axes object. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The figure and axes objects.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[plt.Figure, plt.Axes]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.produce_Qmap">
+<span class="sig-name descname"><span class="pre">produce_Qmap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">SDD</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">900</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR.produce_Qmap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.produce_Qmap" title="Link to this definition"></a></dt>
+<dd><p>Calculate Q-space map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>SDD</strong> (<em>float</em><em>, </em><em>optional</em>) – Sample-to-Detector Distance in mm. Defaults to 900.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.replace_transmission">
+<span class="sig-name descname"><span class="pre">replace_transmission</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter_transmission</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR.replace_transmission"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.replace_transmission" title="Link to this definition"></a></dt>
+<dd><p>Replace transmission values using a dictionary of filter transmissions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filter_transmission</strong> (<em>Dict</em><em>[</em><em>Any</em><em>, </em><em>float</em><em>]</em>) – Mapping of attenuator position to transmission.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.reprocess">
+<span class="sig-name descname"><span class="pre">reprocess</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR.reprocess"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.reprocess" title="Link to this definition"></a></dt>
+<dd><p>Reload and reprocess the data, resetting corrections.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.save_reflectivity">
+<span class="sig-name descname"><span class="pre">save_reflectivity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR.save_reflectivity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.save_reflectivity" title="Link to this definition"></a></dt>
+<dd><p>Save the reflectivity data to a text file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>Union</em><em>[</em><em>bool</em><em>, </em><em>str</em><em>]</em><em>, </em><em>optional</em>) – Filename to save to. Defaults to False (auto-generated).</p></li>
+<li><p><strong>directory</strong> (<em>str</em><em>, </em><em>optional</em>) – Directory to save to. Defaults to None (current dir).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="XRR.XRR.show_detector_image">
+<span class="sig-name descname"><span class="pre">show_detector_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">matplotlib.pyplot.Axes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_cross</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/XRR.html#XRR.show_detector_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.XRR.show_detector_image" title="Link to this definition"></a></dt>
+<dd><p>Show a single frame of the detector image with ROI and background regions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frame_number</strong> (<em>int</em><em>, </em><em>optional</em>) – Frame number to display. Defaults to 50.</p></li>
+<li><p><strong>ax</strong> (<em>Optional</em><em>[</em><em>plt.Axes</em><em>]</em><em>, </em><em>optional</em>) – Matplotlib axes object. Defaults to None.</p></li>
+<li><p><strong>plot_cross</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to plot crosshairs at beam center. Defaults to True.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="XRR.rebin">
+<span class="sig-prename descclassname"><span class="pre">XRR.</span></span><span class="sig-name descname"><span class="pre">rebin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q_vectors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Refl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Relf_E</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rebin_as</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'linear'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/XRR.html#rebin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#XRR.rebin" title="Link to this definition"></a></dt>
+<dd><p>Rebin the data on a linear or logarithmic q-scale.</p>
+<p>This rebinning procedure is taken from islatu by Andrew R. McCluskey:
+<a class="reference external" href="https://github.com/DiamondLightSource/islatu">https://github.com/DiamondLightSource/islatu</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>q_vectors</strong> (<em>np.ndarray</em>) – The current q vectors.</p></li>
+<li><p><strong>Refl</strong> (<em>np.ndarray</em>) – The current reflected intensities.</p></li>
+<li><p><strong>Relf_E</strong> (<em>np.ndarray</em>) – The current reflected intensity errors.</p></li>
+<li><p><strong>new_q</strong> (<em>Optional</em><em>[</em><em>np.ndarray</em><em>]</em>) – Array of potential q-values. Defaults to None.
+If this argument is not specified, then the new q, R values are binned
+according to rebin_as and number_of_bins.</p></li>
+<li><p><strong>rebin_as</strong> (<em>str</em>) – String specifying how the data should be rebinned.
+Options are “linear” and “log”. This is only used if new_q is unspecified.
+Defaults to “linear”.</p></li>
+<li><p><strong>number_of_bins</strong> (<em>int</em><em>, </em><em>optional</em>) – The max number of q-vectors to be using
+initially in the rebinning of the data. Defaults to 5000.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Containing:</dt><dd><ul class="simple">
+<li><p>cleaned_q: rebinned q-values.</p></li>
+<li><p>cleaned_R: rebinned intensities.</p></li>
+<li><p>cleaned_R_e: rebinned intensity errors.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[np.ndarray, np.ndarray, np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="XRR Processing" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Author.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>
