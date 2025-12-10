@@ -169,7 +169,8 @@ class XRR:
                  pixel_size_qxz: float = 0.055,
                  pixel_size_qy: float = 0.055,
                  energy_name: str = 'monoe',
-                 I0: float = 1e13):
+                 I0: float = 1e13,
+                 saving_dir = None):
         """
         Initialize the XRR processing class.
 
@@ -226,6 +227,8 @@ class XRR:
         self.Smap2D = []
         self.Smap2D_e = []
         self.sample_name = ""
+        self.Pi = 100
+        self.saving_dir = saving_dir
 
         # Initialize data attributes to avoid attribute error if accessed before loading
         self.data = None
@@ -240,6 +243,7 @@ class XRR:
 
         self.__load_data__()
         self.__process_2D_data__()
+        self._check_saving_dir()
 
     def __load_single_scan__(self, scan_n: str) -> Dict[str, Any]:
         """
@@ -251,7 +255,7 @@ class XRR:
         Returns:
             Dict[str, Any]: Dictionary containing loaded data components.
         """
-        logger.info('Loading scan #%s', scan_n)
+        #logger.info('Loading scan #%s', scan_n)
         with h5py.File(self.file, "r") as f:
             base_path = f"{scan_n}.1"
             meas_path = f"{base_path}/measurement/"
@@ -264,7 +268,8 @@ class XRR:
                 'attenuator': np.array(f.get(f"{meas_path}{self.att_name}")),
                 'cnttime': np.array(f.get(f"{meas_path}{self.cnttime_name}")),
                 'energy': np.array(f.get(f"{base_path}/instrument/positioners/{self.energy_name}")),
-                'sample_name': str(f.get(f"{base_path}/sample/name/")[()])[2:-1:1]
+                'sample_name': str(f.get(f"{base_path}/sample/name/")[()])[2:-1:1],
+                'Pi': np.mean(f.get(f"{meas_path}{'fb_Pi'}")),
             }
 
         logger.info('Loaded scan #%s', scan_n)
@@ -292,6 +297,7 @@ class XRR:
         self.cnttime = first_scan_data['cnttime']
         self.energy = first_scan_data['energy']
         self.sample_name = first_scan_data['sample_name']
+        self.Pi = first_scan_data['Pi']
 
         if len(self.scans) > 1:
             for scan_num in self.scans[1:]:
@@ -307,7 +313,7 @@ class XRR:
                 self.cnttime = np.append(self.cnttime, scan_data['cnttime'][skip_points:])
                 self.energy = np.append(self.energy, scan_data['energy'])
 
-        logger.info("Loading completed. Reading time %3.3f sec", time.time() - t0)
+        #logger.info("Loading completed. Reading time %3.3f sec", time.time() - t0)
 
     def __process_2D_data__(self):
         """
@@ -317,7 +323,7 @@ class XRR:
         and normalizes by monitor and transmission.
         """
         t0 = time.time()
-        logger.info('Starting 2D data processing.')
+        #logger.info('Starting 2D data processing.')
         nic, nxc, nyc = np.shape(self.data)
 
         # Handle legacy data where energy might be an array
@@ -406,7 +412,7 @@ class XRR:
         self.reflectivity[self.reflectivity <= 1e-12] = 1e-12
         self.reflectivity_error[self.reflectivity_error <= 1e-13] = 1e-13
 
-        logger.info("Processing completed. Processing time %3.3f sec", time.time() - t0)
+        #logger.info("Processing completed. Processing time %3.3f sec", time.time() - t0)
 
     def footprint_correction(self, sample_size: float = 1.0, beam_size: float = 9.6, correct_dir_beam: bool = True):
         """
@@ -565,11 +571,13 @@ class XRR:
         ax.set_xlim(left=0)
         ax.set_ylim(top=2)
         ax.set_yticks([1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1])
+        ax.set_ylim(5e-11, 2e0)
         ax.set_xlabel(r'$q_z, \AA^{-1}$')
         ax.set_ylabel(r'$\mathrm{Reflectivity}$')
+
+
         if save:
-            logger.info('Saving reflectivity plot.')
-            plt.savefig('XRR_{}_scan_{}.png'.format(self.sample_name, self.scans), dpi=300)
+            self._save_figure(plt.gcf(),'log')
 
         return fig, ax
 
@@ -596,28 +604,28 @@ class XRR:
         ax.set_xlabel(r'$q_z, \AA^{-1}$')
         ax.set_ylabel(r'$\mathrm{Reflectivity}\cdot q_z^4$')
         if save:
-            logger.info('Saving reflectivity * qz**4 plot.')
-            plt.savefig('XRR_{}_scan_qz4_{}.png'.format(self.sample_name, self.scans), dpi=300)
+            self._save_figure(plt.gcf(),'qz4')
+
 
         return fig, ax
 
-    def save_reflectivity(self, filename: Union[bool, str] = False, directory: str = None):
+    def save_reflectivity(self):
         """
         Save the reflectivity data to a text file.
-
-        Args:
-            filename (Union[bool, str], optional): Filename to save to. Defaults to False (auto-generated).
-            directory (str, optional): Directory to save to. Defaults to None (current dir).
         """
-        if not directory:
-            directory = os.getcwd()
-        if not filename:
-            filename = self.sample_name + '_xrr_scan_{}.dat'.format(self.scans)
+        out = self.get_reflectivity().T
 
-        filepath = os.path.join(directory, filename)
-        _to_save = self.get_reflectivity().T
-        np.savetxt(filepath, _to_save)
-        logger.info('Reflectivity saved to: %s', filepath)
+
+        self._ensure_sample_dir()
+        if self.Pi<80:
+            filename = self.saving_dir + '/{}_XRR_scan_{}_Pi_{:.0f}.dat'.format(
+                self.sample_name, self.scans, self.Pi)
+        else:
+            filename = self.saving_dir + '/{}_XRR_scan_{}.dat'.format(
+                self.sample_name, self.scans)
+
+        np.savetxt(filename, out)
+        logger.info('Reflectivity saved to: %s', filename)
 
     def show_detector_image(self, frame_number: int = 50, ax: Optional[plt.Axes] = None, plot_cross: bool = True):
         """
@@ -750,7 +758,7 @@ class XRR:
             self.replace_transmission(new_transm)
             self.corrected_doubles = True
         else:
-            logger.info('Double points already corrected.')
+            logger.warning('Double points already corrected.')
 
     def do_rebin(self, *args, **kwargs):
         """
@@ -780,7 +788,7 @@ class XRR:
         """
         n_max = np.argmax(I)
         # Heuristic to find background cutoff
-        I_cutoff = np.mean(I[:n_max]) - np.mean(I[:n_max]) ** 0.5
+        I_cutoff = np.mean(I[:n_max]) - np.sqrt(np.mean(I[:n_max]))
         zscan_new = I[np.where(I >= I_cutoff)]
         if len(zscan_new) > 0:
             I0 = np.median(zscan_new)
@@ -849,9 +857,49 @@ class XRR:
                     if len(indices[0]) > 0:
                         current_trans = self.transmission[indices[0][0]]
                         I0 = calc_I0 / current_trans
-                        print(I0)
+                        logger.info('Flux set to {:.4e}'.format(I0))
                         self.I0 = I0
                 logger.info('I0 replaced.')
             else:
                 logger.warning('Attenuator %s not found in the scan of motor %s.\nCheck inputs.',
                                atten, self.alpha_i)
+
+
+    def _check_saving_dir(self):
+        """
+        Check if the saving directory is set; if not, set a default based on the current working directory and sample name.
+        """
+        if self.saving_dir:
+            pass
+        else:
+            self.saving_dir = os.getcwd() + f"/{self.sample_name}"
+
+
+    def _ensure_sample_dir(self):
+        """
+        Ensure the saving directory exists, creating it if necessary.
+        """
+        try:
+            os.makedirs(self.saving_dir, exist_ok=True)
+        except OSError as e:
+            print('Saving directory is impossible: ', e)
+
+    def _save_figure(self, fig, suffix):
+        """
+        Helper method to save a matplotlib figure.
+
+        Args:
+            fig (matplotlib.figure.Figure): The figure object to save.
+            suffix (str): Suffix to append to the filename.
+        """
+        self._ensure_sample_dir()
+
+        if self.Pi<80:
+            filename = self.saving_dir + '/{}_XRR_scan_{}_Pi_{:.0f}_{}.png'.format(
+                self.sample_name, self.scans, self.Pi, suffix)
+        else:
+            filename = self.saving_dir + '/{}_XRR_scan_{}_{}.png'.format(
+                self.sample_name, self.scans, suffix)
+
+        fig.savefig(filename, dpi=200)
+        logger.info('Plot saved to {}.'.format(filename))

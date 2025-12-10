@@ -33,10 +33,10 @@ pip install h5py matplotlib numpy scipy
 
 ### Setup
 
-Clone the repository and import the `XRR` class in your python script.
+Clone the repository to your working directory and import the `XRR` class in your python script.
 
 ```bash
-git clone https://github.com/your_username/XRR_ID10_ESRF.git
+git clone https://github.com/chelberserker/XRR_ID10
 ```
 
 ## Usage
@@ -49,22 +49,19 @@ import matplotlib.pyplot as plt
 
 # Define parameters
 file_path = 'path/to/your/data.h5'
-scan_numbers = [10, 11, 12]  # List of scan numbers to process
+zgH_ScanN_list = [21] # zgH scan before XRR scan to normalize the intensity, optional
+refl_ScanN_list = [22,23] # List of reflectivity scan numbers to process
 
 # Initialize the XRR object
 # This automatically loads data and processes it
-xrr = XRR(file=file_path, scans=scan_numbers)
+xrr = XRR(file=file_path, scans=refl_ScanN_list)
+zgH = XRR(file=file_path, scans=zgH_ScanN_list)
+
+# Apply all corrections: transmission, flux, footprint
+xrr.apply_auto_corrections(sample_size=17, beam_size=19, z_scan=zgH)
 
 # Plot reflectivity
-fig, ax = xrr.plot_reflectivity()
-plt.show()
-
-# Apply footprint correction
-xrr.footprint_correction(sample_size=1.0, beamsize=100)
-
-# Re-plot to see corrected data
 xrr.plot_reflectivity()
-plt.show()
 
 # Save the reflectivity data
 xrr.save_reflectivity()
