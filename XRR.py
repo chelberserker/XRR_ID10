@@ -158,16 +158,17 @@ class XRR:
                  alpha_i_name: str = 'chi',
                  detector_name: str = 'mpx_cdte_22_eh1',
                  monitor_name: str = 'mon',
-                 transmission_name: str = 'transm',
-                 att_name: str = 'curratt',
+                 transmission_name: str = 'autof_eh1_transm',
+                 att_name: str = 'autof_eh1_curratt',
                  cnttime_name: str = 'sec',
                  PX0: int = 404,
                  PY0: int = 165,
                  dPX: int = 5,
                  dPY: int = 5,
+                 bckg_gap = 1,
                  pixel_size_qxz: float = 0.055,
                  pixel_size_qy: float = 0.055,
-                 energy_name: str = 'eccmono',
+                 energy_name: str = 'monoe',
                  I0: float = 1e13):
         """
         Initialize the XRR processing class.
@@ -178,16 +179,17 @@ class XRR:
             alpha_i_name (str, optional): Motor name for incident angle. Defaults to 'chi'.
             detector_name (str, optional): Detector dataset name. Defaults to 'mpx_cdte_22_eh1'.
             monitor_name (str, optional): Monitor counter name. Defaults to 'mon'.
-            transmission_name (str, optional): Transmission counter name. Defaults to 'transm'.
-            att_name (str, optional): Attenuator name. Defaults to 'curratt'.
+            transmission_name (str, optional): Transmission counter name. Defaults to 'autof_eh1_transm'.
+            att_name (str, optional): Attenuator name. Defaults to 'autof_eh1_curratt'.
             cnttime_name (str, optional): Count time name. Defaults to 'sec'.
             PX0 (int, optional): Direct beam X pixel. Defaults to 404.
             PY0 (int, optional): Direct beam Y pixel. Defaults to 165.
             dPX (int, optional): ROI half-width X. Defaults to 5.
             dPY (int, optional): ROI half-width Y. Defaults to 5.
+            bckg_gap (int, optional): Gap between signal and backgroung ROIs in pixels. Defaults to 1.
             pixel_size_qxz (float, optional): Pixel size factor. Defaults to 0.055.
             pixel_size_qy (float, optional): Pixel size factor. Defaults to 0.055.
-            energy_name (str, optional): Energy motor name. Defaults to 'eccmono'.
+            energy_name (str, optional): Energy motor name. Defaults to 'monoe'.
             I0 (float, optional): Intensity normalization. Defaults to 1e13.
         """
         self.file = file
@@ -209,6 +211,7 @@ class XRR:
         self.PY0 = PY0
         self.dPX = dPX
         self.dPY = dPY
+        self.bckg_gap = bckg_gap
 
         self.I0 = I0
 
@@ -340,8 +343,8 @@ class XRR:
         roi_y_slice = slice(self.PY0 - self.dPY, self.PY0 + self.dPY)
         roi_x_slice = slice(self.PX0 - self.dPX, self.PX0 + self.dPX)
 
-        bkg_low_y_slice = slice(self.PY0 + 2 * self.dPY + 1 - self.dPY, self.PY0 + 2 * self.dPY + 1 + self.dPY)
-        bkg_high_y_slice = slice(self.PY0 - 2 * self.dPY - 1 - self.dPY, self.PY0 - 2 * self.dPY - 1 + self.dPY)
+        bkg_low_y_slice = slice(self.PY0 + 2 * self.dPY + self.bckg_gap - self.dPY, self.PY0 + 2 * self.dPY + self.bckg_gap  + self.dPY)
+        bkg_high_y_slice = slice(self.PY0 - 2 * self.dPY - self.bckg_gap  - self.dPY, self.PY0 - 2 * self.dPY - self.bckg_gap  + self.dPY)
 
         for i in range(nic):
             # Lower square background
@@ -374,11 +377,11 @@ class XRR:
             try:
                 # Avoid division by zero
                 with np.errstate(divide='ignore', invalid='ignore'):
-                    I_err[i] = np.sqrt((Is_cut_err[i] / Is_cut[i]) ** 2 + (Ib_cut_err[i] / Ib_cut[i]) ** 2)
+                    I_err[i] = np.sqrt(Is_cut_err[i]**2 + Ib_cut_err[i]**2)/(Is_cut[i] - Ib_cut[i])
                     if not np.isfinite(I_err[i]):
-                        I_err[i] = Is_cut_err[i] / Is_cut[i] if Is_cut[i] > 0 else 0
+                        I_err[i] = Is_cut_err[i] / (Is_cut[i]) if Is_cut[i] > 0 else 0
             except Exception:
-                 I_err[i] = Is_cut_err[i] / Is_cut[i] if Is_cut[i] > 0 else 0
+                 I_err[i] = Is_cut_err[i] / (Is_cut[i])  if Is_cut[i] > 0 else 0
 
         logger.info('Number of points in the scan %6d', len(self.alpha_i))
 
@@ -391,14 +394,13 @@ class XRR:
 
         # Reflectivity calculation
         norm_factor = self.transmission * self.monitor / self.monitor[0]
-        self.reflectivity = (I_Signal_cut - I_Backgr_cut) / norm_factor
+        self.reflectivity = (I_Signal_cut - I_Backgr_cut) / norm_factor / self.I0
         self.reflectivity_error = np.abs(I_error * self.reflectivity)
 
-        self.bckg = I_Backgr_cut / norm_factor / self.I0
+        self.bckg = I_Backgr_cut / norm_factor
 
-        self.raw_counts = I_Signal_cut / self.monitor * self.monitor[0]
-        self.reflectivity = self.reflectivity / self.I0
-        self.reflectivity_error = self.reflectivity_error / self.I0
+        self.raw_counts = I_Signal_cut
+
 
         # Clip values
         self.reflectivity[self.reflectivity <= 1e-12] = 1e-12
@@ -406,13 +408,13 @@ class XRR:
 
         logger.info("Processing completed. Processing time %3.3f sec", time.time() - t0)
 
-    def footprint_correction(self, sample_size: float = 1.0, beamsize: float = 9.6, correct_dir_beam: bool = False):
+    def footprint_correction(self, sample_size: float = 1.0, beam_size: float = 9.6, correct_dir_beam: bool = True):
         """
         Apply footprint correction to the reflectivity data.
 
         Args:
             sample_size (float, optional): Sample size in cm. Defaults to 1.
-            beamsize (float, optional): Beam size in microns. Defaults to 9.6.
+            beam_size (float, optional): Beam size in microns. Defaults to 9.6.
             correct_dir_beam (bool, optional): Whether to correct direct beam region.
                 Defaults to False.
         """
@@ -422,7 +424,7 @@ class XRR:
 
             # Avoid division by zero by using a small epsilon or handling alpha_i == 0
             footprint = np.array([
-                0.5 * beamsize / np.sin(np.deg2rad(alpha)) if alpha != 0 else 0.5 * beamsize / np.sin(np.deg2rad(1e-3))
+                0.5 * beam_size / np.sin(np.deg2rad(alpha)) if alpha != 0 else 0.5 * beam_size / np.sin(np.deg2rad(1e-3))
                 for alpha in self.alpha_i
             ])
 
@@ -443,7 +445,7 @@ class XRR:
             self.reflectivity = Icor
             self.footprint_correction_applied = True
             logger.info('Footprint correction completed with beam size = %s microns and sample size = %s cm',
-                        beamsize, sample_size)
+                        beam_size, sample_size)
         else:
             logger.warning('Footprint correction already applied! To apply again use reprocess() method.')
 
@@ -458,6 +460,14 @@ class XRR:
         self.replaced_transmission = False
         self.is_rebinned = False
         logger.info("Reloaded and reprocessed data.")
+
+    def apply_auto_corrections(self, sample_size:float, beam_size:float, z_scan:'XRR'):
+        self.correct_doubles()
+        self.assert_i0(z_scan)
+        self.reprocess()
+        self.correct_doubles()
+        self.footprint_correction(sample_size, beam_size, correct_dir_beam=True)
+        logger.info("Reflectivity is fully corrected.")
 
     def produce_Qmap(self, SDD: float = 900):
         """
@@ -628,9 +638,9 @@ class XRR:
 
         signal = patches.Rectangle((self.PX0 - self.dPX, self.PY0 - self.dPY), 2 * self.dPX, 2 * self.dPY, linewidth=1,
                                    edgecolor='r', facecolor='none', label='Signal')
-        b1 = patches.Rectangle((self.PX0 - self.dPX, self.PY0 + 2 * self.dPY + 1 - self.dPY), 2 * self.dPX,
+        b1 = patches.Rectangle((self.PX0 - self.dPX, self.PY0 + 2 * self.dPY + self.bckg_gap - self.dPY), 2 * self.dPX,
                                2 * self.dPY, linewidth=1, edgecolor='cyan', facecolor='none', label='Background')
-        b2 = patches.Rectangle((self.PX0 - self.dPX, self.PY0 - 2 * self.dPY - 1 - self.dPY), 2 * self.dPX,
+        b2 = patches.Rectangle((self.PX0 - self.dPX, self.PY0 - 2 * self.dPY - self.bckg_gap - self.dPY), 2 * self.dPX,
                                2 * self.dPY, linewidth=1, edgecolor='cyan', facecolor='none')
         ax.add_patch(signal)
         ax.add_patch(b1)
@@ -670,7 +680,7 @@ class XRR:
         self.reflectivity_error = new_reflectivity_error
         self.bckg = new_background
         self.replaced_transmission = True
-        logger.info('Transmission corrected. Recalculation will reset it to defaults.')
+        #logger.info('Transmission corrected. Recalculation will reset it to defaults.')
 
     @staticmethod
     def _find_double_(x: np.ndarray) -> Dict[float, np.ndarray]:
@@ -762,7 +772,7 @@ class XRR:
         Find I0 (direct beam intensity) from a Z-scan.
 
         Args:
-            z (np.ndarray): Z positions (or angles).
+            z (np.ndarray): Z positions.
             I (np.ndarray): Intensity.
 
         Returns:
@@ -791,7 +801,7 @@ class XRR:
         if to_print:
             logger.info('Processing scan of motor %s.', self.alpha_i_name)
 
-        I0, n_max = XRR.find_i0_from_z_scan(self.alpha_i, self.reflectivity)
+        I0, n_max = XRR.find_i0_from_z_scan(self.alpha_i, self.raw_counts)
 
         if to_print:
             logger.info('I0 = %.5e, attenuator = %s, transmission = %.5e',
@@ -838,7 +848,8 @@ class XRR:
                     indices = np.where(self.attenuator == atten)
                     if len(indices[0]) > 0:
                         current_trans = self.transmission[indices[0][0]]
-                        I0 = calc_I0 * transmission / current_trans
+                        I0 = calc_I0 / current_trans
+                        print(I0)
                         self.I0 = I0
                 logger.info('I0 replaced.')
             else:
