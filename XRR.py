@@ -9,10 +9,12 @@ import copy
 import logging
 import os
 import time
+from datetime import datetime
 from math import sin, cos, pi
 from typing import Optional, Tuple, Union, List, Dict, Any
 
 import h5py
+import orsopy.fileio as orso
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -609,14 +611,24 @@ class XRR:
 
         return fig, ax
 
-    def save_reflectivity(self):
+    def save_reflectivity(self, format: str = 'dat', owner: str = 'ESRF', creator: str = 'opid10', zgh_scans: Optional[List[int]] = None):
         """
         Save the reflectivity data to a text file.
+
+        Args:
+            format (str, optional): Format of the saved file. Options are 'dat' and 'orso'. Defaults to 'dat'.
+            owner (str, optional): Owner of the data. Defaults to 'ESRF'.
+            creator (str, optional): Creator of the reduced file. Defaults to 'opid10'.
+            zgh_scans (Optional[List[int]], optional): List of zgH scan numbers. Defaults to None.
         """
+        self._ensure_sample_dir()
+
+        if format == 'orso':
+            self._save_orso(owner, creator, zgh_scans)
+            return
+
         out = self.get_reflectivity().T
 
-
-        self._ensure_sample_dir()
         if self.Pi<80:
             filename = self.saving_dir + '/{}_XRR_scan_{}_Pi_{:.0f}.dat'.format(
                 self.sample_name, self.scans, self.Pi)
@@ -625,6 +637,108 @@ class XRR:
                 self.sample_name, self.scans)
 
         np.savetxt(filename, out)
+        logger.info('Reflectivity saved to: %s', filename)
+
+    def _save_orso(self, owner: str, creator: str, zgh_scans: Optional[List[int]] = None):
+        """
+        Save the reflectivity data in ORSO format.
+        """
+        # 1. Define Columns
+        columns = [
+            orso.Column(name='Qz', unit='1/angstrom', physical_quantity='momentum transfer'),
+            orso.Column(name='R', unit=None, physical_quantity='reflectivity'),
+            orso.ErrorColumn(error_of='R', error_type='uncertainty', value_is='sigma'),
+            orso.ErrorColumn(error_of='Qz', error_type='resolution', value_is='sigma')
+        ]
+
+        # 2. DataSource
+        # Try to get date, else default
+        try:
+            # Try to read start_time from the first scan in the file
+            with h5py.File(self.file, "r") as f:
+                # Assuming standard ESRF structure where start_time might be in the scan group
+                # Need to find where it is located. Often in 'scan_number.1/start_time'
+                scan_n = str(self.scans[0])
+                base_path = f"{scan_n}.1"
+                start_time_str = f[base_path].attrs.get('start_time') or f[f"{base_path}/start_time"][()].decode('utf-8')
+                # Parse date string, e.g., '2023-10-27T10:00:00' or similar
+                # ESRF format can vary, often it is isoformat-like
+                try:
+                    start_date = datetime.fromisoformat(str(start_time_str))
+                except ValueError:
+                     # Fallback for other formats if needed, or just use now
+                     start_date = datetime.now()
+        except Exception:
+            start_date = datetime.now()
+
+        owner_person = orso.Person(name=owner, affiliation='ESRF')
+
+        experiment = orso.Experiment(
+            title='XRR',
+            instrument='ID10',
+            start_date=start_date,
+            probe='x-ray',
+            facility='ESRF'
+        )
+
+        sample = orso.Sample(name=self.sample_name)
+
+        # Measurement
+        data_files = [self.file]
+        comment = f"Scans: {self.scans}"
+        if zgh_scans:
+            comment += f", zgH Scans: {zgh_scans}"
+
+        measurement = orso.Measurement(
+            instrument_settings=orso.InstrumentSettings(
+                incident_angle=orso.ValueRange(min=0.0, max=10.0, unit='deg'),
+                wavelength=orso.Value(magnitude=12.398/self.energy, unit='angstrom'),
+                polarization='unpolarized'
+            ),
+            data_files=data_files,
+            comment=comment
+        )
+
+        data_source = orso.DataSource(
+            owner=owner_person,
+            experiment=experiment,
+            sample=sample,
+            measurement=measurement
+        )
+
+        # 3. Reduction
+        reduction = orso.Reduction(
+            software=orso.Software(name='GID_ID10', version='0.1', platform='linux'),
+            creator=orso.Person(name=creator, affiliation='ESRF'),
+            timestamp=datetime.now()
+        )
+
+        # 4. Data
+        qz, R, dR = self.get_reflectivity()
+        # Create resolution array
+        dqz = np.full_like(qz, 1e-3)
+
+        data = np.column_stack((qz, R, dR, dqz))
+
+        # 5. Create Dataset and Save
+        orso_info = orso.Orso(
+            data_source=data_source,
+            reduction=reduction,
+            columns=columns,
+            data_set=self.sample_name
+        )
+
+        dataset = orso.OrsoDataset(info=orso_info, data=data)
+
+        # Filename logic
+        if self.Pi < 80:
+            filename = os.path.join(self.saving_dir, '{}_XRR_scan_{}_Pi_{:.0f}.ort'.format(
+                self.sample_name, self.scans, self.Pi))
+        else:
+            filename = os.path.join(self.saving_dir, '{}_XRR_scan_{}.ort'.format(
+                self.sample_name, self.scans))
+
+        orso.save_orso([dataset], filename)
         logger.info('Reflectivity saved to: %s', filename)
 
     def show_detector_image(self, frame_number: int = 50, ax: Optional[plt.Axes] = None, plot_cross: bool = True):
